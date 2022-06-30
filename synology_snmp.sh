@@ -1,5 +1,5 @@
 #!/bin/bash
-#version 2.01 dated 2/4/2022
+#version 2.1 dated 4/9/2022
 #By Brian Wallace
 
 #This script pulls various information from the Synology NAS
@@ -44,7 +44,6 @@ email_logging_file_location="/volume1/web/logging/notifications/logging_variable
 lock_file_location="/volume1/web/logging/notifications/synology_snmp2.lock"
 config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
 log_file_location="/volume1/web/logging/notifications"
-from_email_address="admin@admin.com"
 debug=0
 disk_messge_tracker=();
 
@@ -144,6 +143,7 @@ if [ -r "$config_file_location" ]; then
 	capture_GPU=${explode[29]}
 	max_GPU_f=${explode[30]}
 	max_GPU=${explode[31]}
+	from_email_address=${explode[32]}
 	
 	if [ $debug -eq 1 ]; then
 		echo "max_disk_temp_f is $max_disk_temp_f"
