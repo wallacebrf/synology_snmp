@@ -53,6 +53,7 @@ if ($server_type==1) {
 		$nas_snmp_user_error="";
 		$number_drives_in_system_error="";
 		$generic_error="";
+		$from_email_error="";
 
 	   if(isset($_POST['submit_server2'])){
 		   if (file_exists("$config_file")) {
@@ -134,9 +135,9 @@ if ($server_type==1) {
 			 
 			[$influxdb_pass, $influxdb_pass_error] = test_input_processing($_POST['influxdb_pass'], $pieces[18], "password", 0, 0);   
 		  
+			[$from_email, $from_email_error] = test_input_processing($_POST['from_email'], $pieces[32], "email", 0, 0);	
 		  
-		  
-		  $put_contents_string="".$max_disk_temp_f.",".$max_CPU0_f.",".$email.",".$email_interval.",".$capture_system.",".$capture_memory.",".$capture_cpu.",".$capture_volume.",".$capture_raid.",".$capture_disk.",".$capture_ups.",".$capture_network.",".$capture_interval.",".$nas_url.",".$influxdb_host.",".$influxdb_port.",".$influxdb_name.",".$influxdb_user.",".$influxdb_pass.",".$script_enable.",".round((($max_disk_temp_f-32)*(5/9)),0).",".round((($max_CPU0_f-32)*(5/9)),0).",".$snmp_authPass1.",".$snmp_privPass2.",".$number_drives_in_system.",".$GPU_installed.",".$nas_snmp_user.",".$snmp_auth_protocol.",".$snmp_privacy_protocol.",".$capture_GPU.",".$max_GPU_f.",".round((($max_GPU_f-32)*(5/9)),0)."";
+		  $put_contents_string="".$max_disk_temp_f.",".$max_CPU0_f.",".$email.",".$email_interval.",".$capture_system.",".$capture_memory.",".$capture_cpu.",".$capture_volume.",".$capture_raid.",".$capture_disk.",".$capture_ups.",".$capture_network.",".$capture_interval.",".$nas_url.",".$influxdb_host.",".$influxdb_port.",".$influxdb_name.",".$influxdb_user.",".$influxdb_pass.",".$script_enable.",".round((($max_disk_temp_f-32)*(5/9)),0).",".round((($max_CPU0_f-32)*(5/9)),0).",".$snmp_authPass1.",".$snmp_privPass2.",".$number_drives_in_system.",".$GPU_installed.",".$nas_snmp_user.",".$snmp_auth_protocol.",".$snmp_privacy_protocol.",".$capture_GPU.",".$max_GPU_f.",".round((($max_GPU_f-32)*(5/9)),0).",".$from_email."";
 		  
 		  file_put_contents("$config_file",$put_contents_string );
 		  
@@ -176,6 +177,7 @@ if ($server_type==1) {
 			  $capture_GPU=$pieces[29];
 			  $max_GPU_f=$pieces[30];
 			  $max_GPU=$pieces[31];
+			  $from_email=$pieces[32];
 		   }else{
 			  $max_disk_temp_f=32;
 			  $max_CPU0_f=32;
@@ -209,8 +211,9 @@ if ($server_type==1) {
 			  $capture_GPU=0;
 			  $max_GPU_f=32;
 			  $max_GPU=0;
+			  $from_email="admin@admin.com";
 			  
-			  $put_contents_string="".$max_disk_temp_f.",".$max_CPU0_f.",".$email.",".$email_interval.",".$capture_system.",".$capture_memory.",".$capture_cpu.",".$capture_volume.",".$capture_raid.",".$capture_disk.",".$capture_ups.",".$capture_network.",".$capture_interval.",".$nas_url.",".$influxdb_host.",".$influxdb_port.",".$influxdb_name.",".$influxdb_user.",".$influxdb_pass.",".$script_enable.",".round((($max_disk_temp_f-32)*(5/9)),0).",".round((($max_CPU0_f-32)*(5/9)),0).",".$snmp_authPass1.",".$snmp_privPass2.",".$number_drives_in_system.",".$GPU_installed.",".$nas_snmp_user.",".$snmp_auth_protocol.",".$snmp_privacy_protocol.",".$capture_GPU.",".$max_GPU_f.",".round((($max_GPU_f-32)*(5/9)),0)."";
+			  $put_contents_string="".$max_disk_temp_f.",".$max_CPU0_f.",".$email.",".$email_interval.",".$capture_system.",".$capture_memory.",".$capture_cpu.",".$capture_volume.",".$capture_raid.",".$capture_disk.",".$capture_ups.",".$capture_network.",".$capture_interval.",".$nas_url.",".$influxdb_host.",".$influxdb_port.",".$influxdb_name.",".$influxdb_user.",".$influxdb_pass.",".$script_enable.",".round((($max_disk_temp_f-32)*(5/9)),0).",".round((($max_CPU0_f-32)*(5/9)),0).",".$snmp_authPass1.",".$snmp_privPass2.",".$number_drives_in_system.",".$GPU_installed.",".$nas_snmp_user.",".$snmp_auth_protocol.",".$snmp_privacy_protocol.",".$capture_GPU.",".$max_GPU_f.",".round((($max_GPU_f-32)*(5/9)),0).",".$from_email."";
 		  
 			  file_put_contents("$config_file",$put_contents_string );
 		   }
@@ -244,8 +247,8 @@ if ($server_type==1) {
 		   print " ".$max_GPU0_error."</p>";
 		   
 		   print "<br><p>E-MAIL SETTINGS</p>";
-		   print "<p>-> Alert Email Receipient: <input type=\"text\" name=\"email\" value=".$email."><font size=\"1\"> Separate Addresses by Semicolon</font>";
-		   print " ".$email_error."</p>";
+		   print "<p>-> Alert Email Recipient: <input type=\"text\" name=\"email\" value=".$email."><font size=\"1\"> Separate Addresses by Semicolon</font> ".$email_error."</p>";
+		   print "<p>-> From Email: <input type=\"text\" name=\"from_email\" value=".$from_email."> ".$from_email_error."</p>";
 
 		   print "<p>-> Email Delay Period [Hours]: <select name=\"email_interval\">";
 					if ($email_interval==60){
