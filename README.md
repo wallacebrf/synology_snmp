@@ -7,22 +7,18 @@
 
 <!-- PROJECT LOGO -->
 <br />
-<div align="center">
-  <a href="https://github.com/wallacebrf/Synology_Data_Scrub_Status">
-    <img src="https://raw.githubusercontent.com/wallacebrf/Synology_Data_Scrub_Status/main/images/scrubby_tout.png" alt="Logo" width="180" height="207">
-  </a>
 
-<h3 align="center">Synology Data Srubbing (Raid Sync and BTRFS Scrubbing) + Email Notifications on Status</h3>
+<h3 align="center">Synology SNMP data Logging to InfluxDB version 2</h3>
 
   <p align="center">
-    This project is comprised of a simple shell script that is configured in Synology Task Scheduler to run once per hour. The script performs commands to determine the RAID syncing status and BTRFS file system scrubbing status. If the status is active an email is sent with that current status
+    This project is comprised of a shell script that runs once per minute collecting data from DSM and placing it into InfluxDB version 2. 
     <br />
-    <a href="https://github.com/wallacebrf/Synology_Data_Scrub_Status"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/wallacebrf/synology_snmp"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/wallacebrf/Synology_Data_Scrub_Status/issues">Report Bug</a>
+    <a href="https://github.com/wallacebrf/synology_snmp/issues">Report Bug</a>
     ·
-    <a href="https://github.com/wallacebrf/Synology_Data_Scrub_Status/issues">Request Feature</a>
+    <a href="https://github.com/wallacebrf/synology_snmp/issues">Request Feature</a>
   </p>
 </div>
 
@@ -59,11 +55,27 @@
 <!-- ABOUT THE PROJECT -->
 ### About_the_project_Details
 
-the script performs the following command to get the BTRFS status on a particular volume ```btrfs scrub status -d /volumexxxx``` where xxx indicates the volume number (Volume1 or Volume2 etc). The scrip then searches the resulting output for the string "running". If the string is found, then the BTRFS scrubbing is active. 
+The script gathers different SNMP based details from a synology NAS such as the following:
 
-the script also performs the command ```cat /proc/mdstat``` to get the current RAID status. if the string "resync" is found, then the RAID sync activity is in progress
+1. System: System Uptime, System Status, System Fan Status, Model Name, Serial Number, Upgrade Available, DSM Version, System Temp
 
-An email with the status of scrubbing is only sent if scrubbing is active. 
+2. Memory: Total Memory, Real Memory Available, Buffer Memory Used, Cached Memory Used, Memory Free
+
+3. CPU: CPU Usage Idle
+
+4. Volume: Volume Name, Volume Total Size, Volume Used Size
+
+5. RAID: RAID Name, RAID Status, RAID Free Size, RAID Total Size
+
+6. Disk: Disk Name, Disk Model, Disk Type, Disk Status, Disk Temperature
+
+7. UPS: UPS Battery Charge, UPS Load, UPS Status, UPS Battery Runtime
+
+8. Network: Interface Name, Bytes Recv, Bytes Sent 
+
+9. GPU: If this is a DVA (Deep Video Analysis) system, GPU usage, GPU Temperature, GPU Memory Usage, GPU Fan Speed
+
+Some items like system, GPU, and disk temperatures can send alert email notifications based on configurable set-points. 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -72,100 +84,133 @@ An email with the status of scrubbing is only sent if scrubbing is active.
 <!-- GETTING STARTED -->
 ## Getting Started
 
-This project is written around a Synology NAS, however the BTRFS and RAID commands can work on other systems. 
+This project is written around a Synology NAS and their DSM specific SNMP OIDs and MIBs. 
 
 ### Prerequisites
 
-This project requires Synology Mail Plus Server to be installed. This script uses the command "sendmail" which is not available on Synology DSM unless Mail Plus Server is installed and properly configured to relay messages. 
+1. this script is designed to be executed every 60 seconds
+2. this script requires the installation of synology MailPlus server package in package center in order to send emails. 
+	#the mail plus server must be properly configured to relay received messages to another email account. 
+3. RAMDISK
+	#NOTE: to reduce disk IOPS activity, it is recommended to create a RAMDISK for the temp files this script uses
+	#to do so, create a scheduled task on boot up in Synology Task Scheduler to add the following line
+
+		#mount -t tmpfs -o size=1% ramdisk $notification_file_location
+
+	where "$notification_file_location" is the location you want the files stored and is a variable configured below
+
+4. this script only supports SNMP V3. This is because lower versions are less secure 
+	#SNMP must be enabled on the host NAS for the script to gather the NAS NAME
+	#the snmp settings for the NAS can all be entered into the web administration page
+5. This script can be run through synology Task Scheduler. However it has been observed that running large scripts like this as frequently as every 60 seconds causes the synoschedtask system application to use large amounts of resources and causes the script to execute slowly
+	#details of this issue can be seen here:
+	#https://www.reddit.com/r/synology/comments/kv7ufq/high_disk_usage_on_disk_1_caused_by_syno_task/
+	#to fix this it is recommend to directly edit the crontab at /etc/crontab
+	
+	#this can be accomplished using vi /etc/crontab
+	
+	#add the following line: 
+	```	*	*	*	*	*	root	$path_to_file/$filename```
+	#details on crontab can be found here: https://man7.org/linux/man-pages/man5/crontab.5.html
+6. This project requires a PHP server to be installed and configured to allow the web-administrative page to be available. 
+
 
 ### Installation
 
-The script can be downloaded and placed in any shared folder desired on the Synology NAS
+Note: this assumes InfluxDB version 2 is already installed and properly configured.
 
-the script has the folllowing configuration paramters
-
-```
-email_address="email@domain.com"
-from_email_address="from@domain.com"
-email_subject="Server Data Scrubbing Status"
-lock_file="/volume1/web/logging/notifications/data_scrubbing.lock"
-log_file="/volume1/web/logging/notifications/file_scrubbing_status.txt"
-number_installed_BTRFS_volumes=2
-```
-
-The first three lines control to whom the notification email will be sent, who the email is sent from, and what the email's title will be. 
-
-The next line ```lock_file```. This file is used to prevent more than one instance of the script from running at once. ensure the path and file name are correct for where you wish the file to be temporally stored. 
-
-The next line ```log_file``` is where the .txt log file generated by the script will be saved. This file also contains the information that will be emailed if scrubbing is active.
-
-the final line ```number_installed_BTRFS_volumes``` is the number of volumes configured for BTRFS file systems so the script can loop through all of the volumes
-
-Once the script is on the NAS, go to Control Panel --> Task Scheduler
-
-Click on Create --> Scheduled Task --> User-defined_script
-
-In the new window, name the script something useful like "Data Scrubbing Status" and set user to either root, or a user with administrative rights as DSM will otherwise not allow the commands to run
-
-Go to the schedule tab, and at the bottom, change the "Frequency" to "every hour" and change the "last time run" to "23:00"
-
-Go to the "Task Settings" tab. in the "user defined script" area at the bottom enter ```bash /volume1/web/logging/datascrubbing.sh``` for example. Ensure the path is the path to where the file was placed on the NAS. 
-
-Click OK. 
-
-To verify the script works, selecting the scheduled task and hitting "Run" will force the script to operate. If Synology Mail Plus server is configured correctly to forward emails, an email will be received. If debugging is needed, adding an email address to the "Task Settings" tab can allow Task Scheduler to send an email with the results of the script execution. 
-
-
-
-<!-- USAGE EXAMPLES -->
-## Usage
-
-The output of the script will look as follows
+1. Create the following directories on the NAS
 
 ```
-from: from@domain.com 
-to: email@domain.com
-subject: Server Data Scrubbing Status 
-
-MailPlus Server is installed and running
-
-
-No BTRFS Data Scrubbing Currently In Progress on /Volume1
-
-scrub status for 1bab8567-2ba3-468e-a36c-be71fe78f0a5
-scrub device /dev/mapper/cachedev_1 (id 1) history
-	scrub started at Sun May 15 01:00:07 2022 and finished after 16:12:46
-	total bytes scrubbed: 26.19TiB with 0 errors
-______________________________________________
-
-No BTRFS Data Scrubbing Currently In Progress on /Volume2
-
-scrub status for 666796d0-417c-4be1-b016-7d2c069d113b
-scrub device /dev/mapper/cachedev_0 (id 1) history
-	scrub started at Tue May 17 02:21:21 2022 and finished after 16:50:54
-	total bytes scrubbed: 26.09TiB with 0 errors
-______________________________________________
-
-No RAID Data Scrubbing Currently In Progress
-
-Personalities : [raid1] [raid6] [raid5] [raid4] [raidF1] 
-md2 : active raid5 sata3p3[0] sata2p3[3] sata1p3[2] sata4p3[1]
-      35142190080 blocks super 1.2 level 5, 64k chunk, algorithm 2 [4/4] [UUUU]
-      
-md3 : active raid5 sata5p3[0] sata9p3[4] sata8p3[3] sata7p3[2] sata6p3[1]
-      46856253440 blocks super 1.2 level 5, 64k chunk, algorithm 2 [5/5] [UUUUU]
-      
-md1 : active raid1 sata1p2[0] sata4p2[3] sata3p2[2] sata2p2[1]
-      2097088 blocks [4/4] [UUUU]
-      
-md0 : active raid1 sata3p1[0] sata2p1[3] sata1p1[2] sata4p1[1]
-      2490176 blocks [4/4] [UUUU]
-      
-unused devices: <none>
-______________________________________________
-
-
+1. %PHP_Server_Root%/config
+2. %PHP_Server_Root%/logging
+3. %PHP_Server_Root%/logging/notifications
 ```
+
+note: ```%PHP_Server_Root%``` is what ever shred folder location the PHP web server root directory is configured to be.
+
+2. Place the ```functions.php``` file in the root of the PHP web server running on the NAS
+
+3. Place the ```synology_snmp.sh``` file in the ```/logging``` directory
+
+4. Place the ```server2_config.php``` file in the ```/config``` direcotry
+
+5. Create a scheduled task on boot up in Synology Task Scheduler to add the following line
+
+		#mount -t tmpfs -o size=1% ramdisk $notification_file_location
+
+		#where "$notification_file_location" is the location created above ```%PHP_Server_Root%/logging/notifications```
+
+### Configuration "synology_snmp.sh"
+
+1. Open the ```synology_snmp.sh``` file in a text editor. 
+2. the script contains the following configuration variables
+```
+email_logging_file_location="/volume1/web/logging/notifications/logging_variable2.txt"
+lock_file_location="/volume1/web/logging/notifications/synology_snmp2.lock"
+config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
+log_file_location="/volume1/web/logging/notifications"
+```
+
+for the variables above, ensure the "/volume1/web" is the correct location for the root of the PHP web server, correct as required
+
+3. delete the lines between ```#for my personal use as i have multiple synology systems, these lines can be deleted by other users``` and ```#Script Start``` as those are for my personal use as i use this script for several units that have slightly different configurations	
+
+4. find the line 
+```
+curl -XPOST "http://$influxdb_host:$influxdb_port/api/v2/write?bucket=$influxdb_name&org=home" -H "Authorization: Token $influxdb_pass" --data-raw "$post_url"
+``` 
+
+Ensure the ```&org=home``` matches the name of the organization used in your configuration
+
+### Configuration "server2_config.php"
+
+1. Open the ```server2_config.php``` file in a text editor
+2. the script contains the following configuration variables
+```
+$form_submit_location="index.php?page=6&config_page=server2_snmp";
+$config_file="/volume1/web/config/config_files/config_files_local/system_config2.txt";
+$page_title="Server2 Logging Configuration Settings";
+```
+
+ENSURE THE VALUES FOR ```$config_file``` ARE THE SAME AS THAT CONFIGURED IN [Configuration "synology_snmp.sh"] FOR THE VARIABLE ```config_file_location```
+
+the ```form_submit_location``` can either be set to the name of the "server2_config.php" file itself, or if the "server2_config.php" file is embedded in another PHP file using an "include_once" then the location should be to that php file
+
+the variable ```page_title``` controls the title of the page when viewing it in a browser. 
+
+
+### Configuration of required settings
+
+<img src="https://github.com/wallacebrf/synology_snmp/blob/main/config_1.png" alt="1313">
+<img src="https://github.com/wallacebrf/synology_snmp/blob/main/config_2.png" alt="1314">
+
+1. now that the files are where they need to be, using a browser go to the "server2_config.php" page. when the page loads for the first time, it will automatically create a "system_config2.txt" in the config directory. the values will all be default values and must be configured. 
+2. ensure the script is enabled
+3. configure maximum CPU, disk, and GPU temperatures (In F, not C)
+4. configure email settings, the destination email address, the from email address, and the frequency in which notification emails will be re-sent if the issue still persists
+5. check what types of data is to be collected from the NAS
+6. enter the details for influxDB.
+--> for influxdb 2, the "database" will be the randomly generated string identifying the data bucket, for example "a6878dc5c298c712"
+--> for influxdb 2, the "User Name of Influx DB" can be left as the default value
+--> for influxdb 2, the "Password" is the API access key / Authorization Token. 
+7. on the NAS, go to Control Panel --> Terminal & SNMP --> SNMP and configure the SNMP version 3 settings. 
+8. configure the SNMP settings for the synology NAS. these settings must match the settings the NAS has been configured to use. 
+
+
+### Configuration of crontab
+
+
+This script can be run through synology Task Scheduler. However it has been observed that running large scripts like this as frequently as every 60 seconds causes the synoschedtask system application to use large amounts of resources and causes the script to execute slowly
+	#details of this issue can be seen here:
+	#https://www.reddit.com/r/synology/comments/kv7ufq/high_disk_usage_on_disk_1_caused_by_syno_task/
+	#to fix this it is recommend to directly edit the crontab at /etc/crontab
+	
+	#this can be accomplished using vi /etc/crontab
+	
+	#add the following line: 
+	```	*	*	*	*	*	root	$path_to_file/$filename```
+	#details on crontab can be found here: https://man7.org/linux/man-pages/man5/crontab.5.html
 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
@@ -193,7 +238,7 @@ This is free to use code, use as you wish
 
 Your Name - Brian Wallace - wallacebrf@hotmail.com
 
-Project Link: [https://github.com/wallacebrf/Synology_Data_Scrub_Status)
+Project Link: [https://github.com/wallacebrf/synology_snmp)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
