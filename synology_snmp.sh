@@ -62,21 +62,21 @@ sever_type=1 #1=server2, 2=serverNVR, 3=serverplex
 
 if [[ $sever_type == 1 ]]; then
 	email_logging_file_location="/volume1/web/logging/notifications/logging_variable2.txt"
-	lock_file_location="/volume1/web/logging/notifications/synology_snmp2_debug.lock"
+	lock_file_location="/volume1/web/logging/notifications/synology_snmp.lock"
 	config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
 	log_file_location="/volume1/web/logging/notifications"
 fi
 
 if [[ $sever_type == 2 ]]; then
 	email_logging_file_location="/volume1/web/logging/notifications/logging_variable2.txt"
-	lock_file_location="/volume1/web/logging/notifications/synology_snmp2.lock"
+	lock_file_location="/volume1/web/logging/notifications/synology_snmp.lock"
 	config_file_location="/volume1/web/logging/system_config_NVR2.txt"
 	log_file_location="/volume1/web/logging/notifications"
 fi
 
 if [[ $sever_type == 3 ]]; then
 	email_logging_file_location="/volume1/web/logging/notifications/logging_variable2.txt"
-	lock_file_location="/volume1/web/logging/notifications/synology_snmp2.lock"
+	lock_file_location="/volume1/web/logging/notifications/synology_snmp.lock"
 	config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
 	log_file_location="/volume1/web/logging/notifications"
 fi
