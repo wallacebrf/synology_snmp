@@ -55,6 +55,12 @@
 <!-- ABOUT THE PROJECT -->
 ### About_the_project_Details
 
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/single_server_1.png" alt="1313">
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/single_server_2.png" alt="1313">
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/single_server_3.png" alt="1313">
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/single_server_4.png" alt="1313">
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/single_server_5.png" alt="1313">
+
 The script gathers different SNMP based details from a synology NAS such as the following:
 
 1. System: System Uptime, System Status, System Fan Status, Model Name, Serial Number, Upgrade Available, DSM Version, System Temp
@@ -213,12 +219,36 @@ This script can be run through synology Task Scheduler. However it has been obse
 	#details on crontab can be found here: https://man7.org/linux/man-pages/man5/crontab.5.html
 
 
+### Grafana Dashboards
+
+
+Two dashboard JSON files are available. One used when monitoring a single Synology Unit. The other is for monitoring multiple Synology Units on a single dashboard. The current version supplied here shows the data for three different synology units
+
+the Dashboard requires the use of an add-on plugin from
+https://grafana.com/grafana/plugins/mxswat-separator-panel/
+
+there are three different items in the JSON that will need to be adjusted to match your installation. the first the bucket it is drawing data from. edit this to match your bucket name
+```
+from(bucket: \"Test/autogen\")
+```
+
+next, edit the name of the synology NAS as reported by the script. the "Server_NVR" items are inlcuded "mixed into" the "Server2" items to demonstrate things like GPU usage, GPU VRAM usage, and GPU fan speed. if theSynology system is not a DVA unit with a graphics card, these "Server_NVR" items can be deleted. 
+
+```
+r[\"nas_name\"] == \"Server2\")
+r[\"nas_name\"] == \"Server_NVR\")
+```
+
+
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
 
 <!-- CONTRIBUTING -->
 ## Contributing
+
+based on the script found here by user kernelkaribou
+https://github.com/kernelkaribou/synology-monitoring
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
