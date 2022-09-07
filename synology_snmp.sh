@@ -1,6 +1,9 @@
 #!/bin/bash
-#version 2.1 dated 4/9/2022
+#version 2.2 dated 9/6/2022
 #By Brian Wallace
+
+#based on the script found here by user kernelkaribou
+#https://github.com/kernelkaribou/synology-monitoring
 
 #This script pulls various information from the Synology NAS
 
@@ -8,12 +11,15 @@
 
 #this script supports automatic email notifications if the system temperatures, or HDDs are too hot
 
+#This script works in conjunction with a PHP powered web-based administration control panel to configure all of the script settings
+
 #***************************************************
 #Dependencies:
 #***************************************************
 #1.) this script is designed to be executed every 60 seconds
 #2.) this script requires the installation of synology MailPlus server package in package center in order to send emails. 
 	#the mail plus server must be properly configured to relay received messages to another email account. 
+	#this is required as the "sendmail" command is not installed by default on synology DSM but is installed with Mail Plus Server
 #3.) RAMDISK
 	#NOTE: to reduce disk IOPS activity, it is recommended to create a RAMDISK for the temp files this script uses
 	#to do so, create a scheduled task on boot up in Synology Task Scheduler to add the following line
@@ -35,26 +41,28 @@
 	#add the following line: 
 	#	*	*	*	*	*	root	$path_to_file/$filename
 	#details on crontab can be found here: https://man7.org/linux/man-pages/man5/crontab.5.html
+#6.) This script only supports InfluxdB version 2. as version 1.x is no longer supported, it is recommended to upgrade to version 2 anyways
 
 
 #########################################
 #variable initialization
 #########################################
-email_logging_file_location="/volume1/web/logging/notifications/logging_variable2.txt"
-lock_file_location="/volume1/web/logging/notifications/synology_snmp2.lock"
-config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
-log_file_location="/volume1/web/logging/notifications"
+#email_logging_file_location="/volume1/web/logging/notifications/logging_variable2.txt"
+#lock_file_location="/volume1/web/logging/notifications/synology_snmp2.lock"
+#config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
+#log_file_location="/volume1/web/logging/notifications"
 debug=0
 disk_messge_tracker=();
+MinDSMVersion=7.0
 
 
-#for my personal use as i have multiple synology systems, these lines can be deleted by other users
+#for my personal use as i have multiple synology systems, these lines can be deleted by other users and the 4x lines above can be un-commented
 ######################################################################################
 sever_type=1 #1=server2, 2=serverNVR, 3=serverplex
 
 if [[ $sever_type == 1 ]]; then
 	email_logging_file_location="/volume1/web/logging/notifications/logging_variable2.txt"
-	lock_file_location="/volume1/web/logging/notifications/synology_snmp2.lock"
+	lock_file_location="/volume1/web/logging/notifications/synology_snmp2_debug.lock"
 	config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
 	log_file_location="/volume1/web/logging/notifications"
 fi
@@ -80,12 +88,13 @@ fi
 #Script Start
 #########################################
 
+#this function is used to send notification emails if any of the installed disk drive's temperatures are above the setting controlled in the web-interface
 function disk_temp_email(){
 	if [ $disk_temp -ge $max_disk_temp ]
 	then
 		if [ ${disk_messge_tracker[$id]} -ge $email_interval ]
 		then
-		echo "the email has not been sent in over 1 hour, re-sending email"
+		echo "the email has not been sent in over $email_interval minutes, re-sending email"
 			local mailbody="Warning the temperature of $disk_name on $nas_name has exceeded $max_disk_temp Degrees C / $max_disk_temp_f Degrees F. The current Temperature is $disk_temp"
 			echo "from: $from_email_address " > $log_file_location/disk_email.txt
 			echo "to: $email_address " >> $log_file_location/disk_email.txt
@@ -98,7 +107,7 @@ function disk_temp_email(){
 	fi
 }
 
-#create a lock file in the ramdisk directory to prevent more than one instance of this script from executing  at once
+#create a lock file in the ramdisk directory to prevent more than one instance of this script from executing at once
 if ! mkdir $lock_file_location; then
 	echo "Failed to acquire lock.\n" >&2
 	exit 1
@@ -106,24 +115,25 @@ fi
 trap 'rm -rf $lock_file_location' EXIT #remove the lockdir on exit
 
 
-#reading in variables from configuration file. this configuration file is edited using a web administration page. or the file can be edited directly
+#reading in variables from configuration file. this configuration file is edited using a web administration page. or the file can be edited directly. 
+#If the file does not yet exist, opening the web administration page will create a file with default settings
 if [ -r "$config_file_location" ]; then
 	#file is available and readable 
 	read input_read < $config_file_location
-	explode=(`echo $input_read | sed 's/,/\n/g'`)
+	explode=(`echo $input_read | sed 's/,/\n/g'`) #explode on the comma separating the variables
 	max_disk_temp_f=${explode[0]}
 	max_CPU0_f=${explode[1]}
 	email_address=${explode[2]}
-	email_interval=${explode[3]}
-	capture_system=${explode[4]}
-	capture_memory=${explode[5]}
-	capture_cpu=${explode[6]}
-	capture_volume=${explode[7]}
-	capture_raid=${explode[8]}
-	capture_disk=${explode[9]}
-	capture_ups=${explode[10]}
-	capture_network=${explode[11]}
-	capture_interval=${explode[12]}
+	email_interval=${explode[3]} #in minutes 
+	capture_system=${explode[4]} #1=capture, 0=no capture
+	capture_memory=${explode[5]} #1=capture, 0=no capture
+	capture_cpu=${explode[6]} #1=capture, 0=no capture
+	capture_volume=${explode[7]} #1=capture, 0=no capture
+	capture_raid=${explode[8]} #1=capture, 0=no capture
+	capture_disk=${explode[9]} #1=capture, 0=no capture
+	capture_ups=${explode[10]} #1=capture, 0=no capture
+	capture_network=${explode[11]} #1=capture, 0=no capture
+	capture_interval=${explode[12]} #number of seconds to wait between captures. 
 	nas_url=${explode[13]}
 	influxdb_host=${explode[14]}
 	influxdb_port=${explode[15]}
@@ -144,6 +154,8 @@ if [ -r "$config_file_location" ]; then
 	max_GPU_f=${explode[30]}
 	max_GPU=${explode[31]}
 	from_email_address=${explode[32]}
+	influx_http_type="http" #set to "http" or "https" based on your influxDB version
+	influxdb_org="home"
 	
 	if [ $debug -eq 1 ]; then
 		echo "max_disk_temp_f is $max_disk_temp_f"
@@ -202,7 +214,7 @@ if [ -r "$config_file_location" ]; then
 				fi
 			fi
 		fi
-		
+			
 		#verify MailPlus Server package is installed and running as the "sendmail" command is not installed in synology by default. the MailPlus Server package is required
 		install_check=$(/usr/syno/bin/synopkg list | grep MailPlus-Server)
 
@@ -210,7 +222,7 @@ if [ -r "$config_file_location" ]; then
 			echo "WARNING!  ----   MailPlus Server NOT is installed, cannot send email notifications"
 			sendmail_installed=0
 		else
-			#echo "MailPlus Server is installed, verify it is running and not stopped"
+			#"MailPlus Server is installed, verify it is running and not stopped"
 			status=$(/usr/syno/bin/synopkg is_onoff "MailPlus-Server")
 			if [ "$status" = "package MailPlus-Server is turned on" ]; then
 				sendmail_installed=1
@@ -223,7 +235,7 @@ if [ -r "$config_file_location" ]; then
 			fi
 		fi
 		
-		#confirm that the synology NVidia drivers are actually installed. If they are not installed, set he correct flag
+		#confirm that the synology NVidia drivers are actually installed. If they are not installed, set the correct flag
 		if ! command -v nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader &> /dev/null
 		then
 			capture_GPU=0
@@ -241,7 +253,10 @@ if [ -r "$config_file_location" ]; then
 			fi
 		fi
 		
-		#reading in variables from previous script executions. we track how many script executions have occurred since the last email notification has been sent to control how frequently repeat messages are sent. we track this for each installed drive and the CPU individually
+		#reading in variables from previous script executions. we track how many script executions have occurred.
+		#This is used to when the last email notification has been sent to control when repeat messages are sent. 
+		#we track this for each installed drive and the CPU individually as each can require email notifications independently. 
+		
 		if [ -r "$email_logging_file_location" ]; then
 			#file is available and readable 
 			read input_read < $email_logging_file_location #determine how many minutes it has been since the last email has been sent
@@ -280,11 +295,6 @@ if [ -r "$config_file_location" ]; then
 						echo "GPU_message_tracker is equal to $GPU_message_tracker"
 					fi
 				fi
-			else
-				capture_GPU=0
-				max_GPU_f=0
-				max_GPU=0
-				GPU_message_tracker=0
 			fi
 			
 		else
@@ -345,6 +355,8 @@ if [ -r "$config_file_location" ]; then
 				#Fan status1 is on line, 0 is failed/off line
 				system_fan_status=`snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 SYNOLOGY-SYSTEM-MIB::systemFanStatus.0 -Oqv`
 				
+				cpu_Fan_Status=`snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 SYNOLOGY-SYSTEM-MIB::cpuFanStatus.0 -Oqv`
+				
 				#Various SYNOLOGY-SYSTEM stats for common OID
 				while IFS= read -r line; do
 				
@@ -367,7 +379,7 @@ if [ -r "$config_file_location" ]; then
 				system_temp=`snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 1.3.6.1.4.1.6574.1.2 -Oqv`
 				
 				#System details to post
-				post_url=$post_url"$measurement,nas_name=$nas_name uptime=$system_uptime,system_status=$system_status,fan_status=$system_fan_status,model=$model,serial_number=$serial,upgrade_status=$upgrade,dsm_version=$version,system_temp=$system_temp
+				post_url=$post_url"$measurement,nas_name=$nas_name uptime=$system_uptime,system_status=$system_status,fan_status=$system_fan_status,model=$model,serial_number=$serial,upgrade_status=$upgrade,dsm_version=$version,system_temp=$system_temp,cpu_Fan_Status=$cpu_Fan_Status
 		"
 				#capturing expansion unit details
 				expansion_info=()
@@ -384,10 +396,10 @@ if [ -r "$config_file_location" ]; then
 					expansion_ID=${expansion_info[$id]}
 				
 					while IFS= read -r line; do
-						if [[ $line == SYNOLOGY-EBOX-MIB::eboxModel.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-EBOX-MIB::eboxModel.$id ="* ]]; then
 							expanion_model=${line/"SYNOLOGY-EBOX-MIB::eboxModel."$id" = STRING: "/}
 						fi
-						if [[ $line == SYNOLOGY-EBOX-MIB::eboxPower.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-EBOX-MIB::eboxPower.$id ="* ]]; then
 							expansion_status=${line/"SYNOLOGY-EBOX-MIB::eboxPower."$id" = INTEGER: "/}
 							#1 = The power supplies well || 2 = The power supplies badly || 3 = The power is not connected
 						fi
@@ -402,7 +414,7 @@ if [ -r "$config_file_location" ]; then
 				#echo the disk temp has been exceeded
 					if [ $CPU_message_tracker -ge $email_interval ]
 					then
-					#echo the email has not been sent in over 1 hour, re-sending email
+					#echo the email has not been sent in over $email_interval minutes, re-sending email
 						if [ $sendmail_installed -eq 1 ];then
 							mailbody="Warning the temperature ($system_temp C) of the system CPU on $nas_name has exceeded $max_CPU0 Degrees C / $max_CPU0_f Degrees F "
 							echo "from: $from_email_address " > $log_file_location/system_contents.txt
@@ -534,15 +546,15 @@ if [ -r "$config_file_location" ]; then
 					volume_path=""${volume_info[$id]}
 					
 					while IFS= read -r line; do
-						if [[ $line == SYNOLOGY-SPACEIO-MIB::spaceIONReadX.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-SPACEIO-MIB::spaceIONReadX.$id ="* ]]; then
 							volume_reads=${line/"SYNOLOGY-SPACEIO-MIB::spaceIONReadX."$id" = Counter64: "/};
 						fi
 				
-						if [[ $line == SYNOLOGY-SPACEIO-MIB::spaceIONWrittenX.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-SPACEIO-MIB::spaceIONWrittenX.$id ="* ]]; then
 							volume_writes=${line/"SYNOLOGY-SPACEIO-MIB::spaceIONWrittenX."$id" = Counter64: "/}
 						fi
 				
-						if [[ $line == SYNOLOGY-SPACEIO-MIB::spaceIOLA.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-SPACEIO-MIB::spaceIOLA.$id ="* ]]; then
 							volume_load=${line/"SYNOLOGY-SPACEIO-MIB::spaceIOLA."$id" = INTEGER: "/}
 						fi
 					done < <(snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 1.3.6.1.4.1.6574.102)
@@ -579,7 +591,7 @@ if [ -r "$config_file_location" ]; then
 					
 						raid_name=${raid_info[$id]}
 					
-						if [[ $line == SYNOLOGY-RAID-MIB::raidStatus.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-RAID-MIB::raidStatus.$id ="* ]]; then
 							raid_status=${line/"SYNOLOGY-RAID-MIB::raidStatus."$id" = INTEGER: "/}
 							#1=Normal
 							#2=Repairing
@@ -604,28 +616,26 @@ if [ -r "$config_file_location" ]; then
 							#21=RaidUnknownStatus
 						fi
 					
-						if [[ $line == SYNOLOGY-RAID-MIB::raidFreeSize.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-RAID-MIB::raidFreeSize.$id ="* ]]; then
 							raid_free_size=${line/"SYNOLOGY-RAID-MIB::raidFreeSize."$id" = Counter64: "/}
 						fi
 					
-						if [[ $line == SYNOLOGY-RAID-MIB::raidTotalSize.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-RAID-MIB::raidTotalSize.$id ="* ]]; then
 							raid_total_size=${line/"SYNOLOGY-RAID-MIB::raidTotalSize."$id" = Counter64: "/}
 						fi
 						
-						MinDSMVersion=7.0
 						/usr/bin/dpkg --compare-versions "$MinDSMVersion" gt "$DSMVersion"
 						if [ "$?" -eq "0" ]; then
 							dsm_type="Synology (DSM 6)" #version is DSM6, do nothing extra
 						else
 							dsm_type="Synology (DSM 7)" #version is DSM7, collect extra information
-							if [[ $line == SYNOLOGY-RAID-MIB::raidHotspareCnt.$id* ]]; then
+							if [[ "$line" == "SYNOLOGY-RAID-MIB::raidHotspareCnt.$id ="* ]]; then
 								raidHotspareCnt=${line/"SYNOLOGY-RAID-MIB::raidHotspareCnt."$id" = INTEGER: "/}
 							fi
 						fi
 				
 					done < <(snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 1.3.6.1.4.1.6574.3.1.1)
 				
-					MinDSMVersion=7.0
 					/usr/bin/dpkg --compare-versions "$MinDSMVersion" gt "$DSMVersion"
 					if [ "$?" -eq "0" ]; then
 						#version is DSM6
@@ -665,15 +675,15 @@ if [ -r "$config_file_location" ]; then
 					
 					disk_name=${disk_info[$id]}
 					
-					if [[ $line == SYNOLOGY-DISK-MIB::diskModel.$id* ]]; then
+					if [[ "$line" == "SYNOLOGY-DISK-MIB::diskModel.$id ="* ]]; then
 						disk_model=${line/"SYNOLOGY-DISK-MIB::diskModel."$id" = STRING: "/}; disk_model=${disk_model// /}
 					fi
 					
-					if [[ $line == SYNOLOGY-DISK-MIB::diskType.$id* ]]; then
+					if [[ "$line" == "SYNOLOGY-DISK-MIB::diskType.$id ="* ]]; then
 						disk_type=${line/"SYNOLOGY-DISK-MIB::diskType."$id" = STRING: "/}
 					fi
 					
-					if [[ $line == SYNOLOGY-DISK-MIB::diskStatus.$id* ]]; then
+					if [[ "$line" == "SYNOLOGY-DISK-MIB::diskStatus.$id ="* ]]; then
 						disk_status=${line/"SYNOLOGY-DISK-MIB::diskStatus."$id" = INTEGER: "/}
 						#1=The disk is functioning normally
 						#2=The disk has system partitions but no data
@@ -682,7 +692,7 @@ if [ -r "$config_file_location" ]; then
 						#5=The disk is damaged/crashed
 					fi
 				
-					if [[ $line == SYNOLOGY-DISK-MIB::diskTemperature.$id* ]]; then
+					if [[ "$line" == "SYNOLOGY-DISK-MIB::diskTemperature.$id ="* ]]; then
 						disk_temp=${line/"SYNOLOGY-DISK-MIB::diskTemperature."$id" = INTEGER: "/}
 					fi
 					
@@ -693,7 +703,7 @@ if [ -r "$config_file_location" ]; then
 						dsm_type="Synology (DSM 6)" #version is DSM6, do nothing extra
 					else
 						dsm_type="Synology (DSM 7)"
-						if [[ $line == SYNOLOGY-DISK-MIB::diskRole.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-DISK-MIB::diskRole.$id ="* ]]; then
 							disk_role=${line/"SYNOLOGY-DISK-MIB::diskRole."$id" = STRING: "/}
 							#"data" = Used by storage pool
 							#"hotspare" = Assigned as a hot spare disk
@@ -702,19 +712,19 @@ if [ -r "$config_file_location" ]; then
 							#"unknown" = Some error occurred
 						fi
 						
-						if [[ $line == SYNOLOGY-DISK-MIB::diskRetry.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-DISK-MIB::diskRetry.$id ="* ]]; then
 							disk_retry=${line/"SYNOLOGY-DISK-MIB::diskRetry."$id" = INTEGER: "/}
 						fi
 						
-						if [[ $line == SYNOLOGY-DISK-MIB::diskBadSector.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-DISK-MIB::diskBadSector.$id ="* ]]; then
 							disk_BadSector=${line/"SYNOLOGY-DISK-MIB::diskBadSector."$id" = INTEGER: "/}
 						fi
 						
-						if [[ $line == SYNOLOGY-DISK-MIB::diskIdentifyFail.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-DISK-MIB::diskIdentifyFail.$id ="* ]]; then
 							disk_IdentifyFail=${line/"SYNOLOGY-DISK-MIB::diskIdentifyFail."$id" = INTEGER: "/}
 						fi
 						
-						if [[ $line == SYNOLOGY-DISK-MIB::diskRemainLife.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-DISK-MIB::diskRemainLife.$id ="* ]]; then
 							disk_RemainLife=${line/"SYNOLOGY-DISK-MIB::diskRemainLife."$id" = INTEGER: "/}
 						fi
 						
@@ -760,15 +770,15 @@ if [ -r "$config_file_location" ]; then
 					disk_path="/dev/"${disk_info[$id]}
 					
 					while IFS= read -r line; do
-						if [[ $line == SYNOLOGY-STORAGEIO-MIB::storageIONReadX.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-STORAGEIO-MIB::storageIONReadX.$id ="* ]]; then
 							disk_reads=${line/"SYNOLOGY-STORAGEIO-MIB::storageIONReadX."$id" = Counter64: "/};
 						fi
 				
-						if [[ $line == SYNOLOGY-STORAGEIO-MIB::storageIONWrittenX.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-STORAGEIO-MIB::storageIONWrittenX.$id ="* ]]; then
 							disk_writes=${line/"SYNOLOGY-STORAGEIO-MIB::storageIONWrittenX."$id" = Counter64: "/}
 						fi
 				
-						if [[ $line == SYNOLOGY-STORAGEIO-MIB::storageIOLA.$id* ]]; then
+						if [[ "$line" == "SYNOLOGY-STORAGEIO-MIB::storageIOLA.$id ="* ]]; then
 							disk_load=${line/"SYNOLOGY-STORAGEIO-MIB::storageIOLA."$id" = INTEGER: "/}
 						fi
 					done < <(snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 1.3.6.1.4.1.6574.101)
@@ -806,6 +816,15 @@ if [ -r "$config_file_location" ]; then
 				elif [[ $ups_status == "OL DISCHRG" ]];
 					then
 						ups_status=3
+				elif [[ $ups_status == "FSD OL" ]];
+					then
+						ups_status=4
+				elif [[ $ups_status == "FSD OB LB" ]];
+					then
+						ups_status=5
+				elif [[ $ups_status == "OB" ]];
+					then
+						ups_status=6
 				fi
 				
 				#Battery Runtime
@@ -924,8 +943,8 @@ if [ -r "$config_file_location" ]; then
 			#########################################
 			#Post to influxdb
 			#########################################
-			
-			curl -XPOST "http://$influxdb_host:$influxdb_port/api/v2/write?bucket=$influxdb_name&org=home" -H "Authorization: Token $influxdb_pass" --data-raw "$post_url"
+	
+			curl -XPOST "$influx_http_type://$influxdb_host:$influxdb_port/api/v2/write?bucket=$influxdb_name&org=$influxdb_org" -H "Authorization: Token $influxdb_pass" --data-raw "$post_url"
 			
 			if [ $debug -eq 1 ]; then
 				echo "$post_url"
