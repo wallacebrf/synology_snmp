@@ -61,7 +61,7 @@
 <img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/single_server_4.png" alt="1313">
 <img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/single_server_5.png" alt="1313">
 
-The script gathers different SNMP based details from a synology NAS such as the following:
+The script gathers different SNMP based details from a synology NAS using SNMP version 3 (much more secure than version 2) such as the following and saves them to InfluxDb version 2:
 
 1. System: System Uptime, System Status, System Fan Status, Model Name, Serial Number, Upgrade Available, DSM Version, System Temp
 
@@ -95,7 +95,7 @@ This project is written around a Synology NAS and their DSM specific SNMP OIDs a
 ### Prerequisites
 
 1. this script is designed to be executed every 60 seconds
-2. this script requires the installation of synology MailPlus server package in package center in order to send emails. 
+2. this script requires the installation of synology MailPlus server package in package center in order to send emails. If it is not installed, the script will still work it just will not be able to send emails. 
 	#the mail plus server must be properly configured to relay received messages to another email account. 
 3. RAMDISK
 	#NOTE: to reduce disk IOPS activity, it is recommended to create a RAMDISK for the temp files this script uses
@@ -123,7 +123,7 @@ This project is written around a Synology NAS and their DSM specific SNMP OIDs a
 
 ### Installation
 
-Note: this assumes InfluxDB version 2 is already installed and properly configured.
+Note: this assumes InfluxDB version 2 and Grafana are already installed and properly configured.
 
 1. Create the following directories on the NAS
 
@@ -139,7 +139,7 @@ note: ```%PHP_Server_Root%``` is what ever shred folder location the PHP web ser
 
 3. Place the ```synology_snmp.sh``` file in the ```/logging``` directory
 
-4. Place the ```server2_config.php``` file in the ```/config``` direcotry
+4. Place the ```server2_config.php``` file in the ```/config``` directory
 
 5. Create a scheduled task on boot up in Synology Task Scheduler to add the following line
 
@@ -222,7 +222,7 @@ This script can be run through synology Task Scheduler. However it has been obse
 ### Grafana Dashboards
 
 
-Two dashboard JSON files are available. One used when monitoring a single Synology Unit. The other is for monitoring multiple Synology Units on a single dashboard. The current version supplied here shows the data for three different synology units
+Two dashboard JSON files are available. The entire dashboard is written around the new FLUX language which is more powerful and simpler to use. One used when monitoring a single Synology Unit. The other is for monitoring multiple Synology Units on a single dashboard. The current version supplied here shows the data for three different synology units
 
 the Dashboard requires the use of an add-on plugin from
 https://grafana.com/grafana/plugins/mxswat-separator-panel/
@@ -232,7 +232,7 @@ there are three different items in the JSON that will need to be adjusted to mat
 from(bucket: \"Test/autogen\")
 ```
 
-next, edit the name of the synology NAS as reported by the script. the "Server_NVR" items are inlcuded "mixed into" the "Server2" items to demonstrate things like GPU usage, GPU VRAM usage, and GPU fan speed. if theSynology system is not a DVA unit with a graphics card, these "Server_NVR" items can be deleted. 
+next, edit the name of the synology NAS as reported by the script. the "Server_NVR" items are included "mixed into" the "Server2" items to demonstrate things like GPU usage, GPU VRAM usage, and GPU fan speed. if theSynology system is not a DVA unit with a graphics card, these "Server_NVR" items can be deleted. 
 
 ```
 r[\"nas_name\"] == \"Server2\")
