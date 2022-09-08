@@ -1,5 +1,5 @@
 #!/bin/bash
-#version 2.2 dated 9/6/2022
+#version 2.3 dated 9/8/2022
 #By Brian Wallace
 
 #based on the script found here by user kernelkaribou
@@ -325,8 +325,55 @@ if [ -r "$config_file_location" ]; then
 		#determine DSM version to ensure as different DSM versions support different OIDs
 		DSMVersion=$(                   cat /etc.defaults/VERSION | grep -i 'productversion=' | cut -d"\"" -f 2)
 
-		# Getting NAS hostname from NAS 
-		nas_name=`snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 SNMPv2-MIB::sysName.0 -Ovqt`
+		# Getting NAS hostname from NAS, and capturing error output in the event we get an error during the SNMP_walk
+		nas_name=$(snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 SNMPv2-MIB::sysName.0 -Ovqt 2>&1)
+
+		#since $nas_name is the first time we have performed a SNMP request, let's make sure we did not receive any errors that could be caused by things like bad passwords, bad username, incorrect auth or privacy types etc
+		#if we receive an error now, then something is wrong with the SNMP settings and this script will not be able to function so we should exit out of it. 
+		#the five main error are
+		#1 - too short of a password
+			#Error: passphrase chosen is below the length requirements of the USM (min=8).
+			#snmpwalk:  (The supplied password length is too short.)
+			#Error generating a key (Ku) from the supplied privacy pass phrase.
+
+		#2
+			#Timeout: No Response from localhost:161
+
+		#3
+			#snmpwalk: Unknown user name
+
+		#4
+			#snmpwalk: Authentication failure (incorrect password, community or key)
+			
+		#5
+			#we get nothing, the results are blank
+
+		
+		if [[ "$nas_name" == "Error:"* ]]; then #will search for the first error type
+			echo "warning, the SNMP Auth password and or the Privacy password supplied is below the minimum 8 characters required. Exiting Script"
+			exit 1
+		fi
+		
+		if [[ "$nas_name" == "Timeout:"* ]]; then #will search for the second error type
+			echo "The SNMP target did not respond. This could be the result of a bad SNMP privacy password, the wrong IP address, the wrong port, or SNMP services not being enabled on the target device"
+			echo "Exiting Script"
+			exit 1
+		fi
+		
+		if [[ "$nas_name" == "snmpwalk: Unknown user name"* ]]; then #will search for the third error type
+			echo "warning, The supplied username is incorrect. Exiting Script"
+			exit 1
+		fi
+		
+		if [[ "$nas_name" == "snmpwalk: Authentication failure (incorrect password, community or key)"* ]]; then #will search for the fourth error type
+			echo "The Authentication protocol or password is incorrect. Exiting Script"
+			exit 1
+		fi
+		
+		if [[ "$nas_name" == "" ]]; then #will search for the fifth error type
+			echo "Something is wrong with the SNMP settings, the results returned a blank/empty value. Exiting Script"
+			exit 1
+		fi
 
 		#loop the script 
 		total_executions=$(( 60 / $capture_interval))
