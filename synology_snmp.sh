@@ -1,5 +1,5 @@
 #!/bin/bash
-#version 2.3 dated 9/8/2022
+#version 2.31 dated 9/8/2022
 #By Brian Wallace
 
 #based on the script found here by user kernelkaribou
@@ -744,7 +744,6 @@ if [ -r "$config_file_location" ]; then
 					fi
 					
 					#depending on version of DSM, we may or may not collect additional data
-					MinDSMVersion=7.0
 					/usr/bin/dpkg --compare-versions "$MinDSMVersion" gt "$DSMVersion"
 					if [ "$?" -eq "0" ]; then
 						dsm_type="Synology (DSM 6)" #version is DSM6, do nothing extra
@@ -779,7 +778,6 @@ if [ -r "$config_file_location" ]; then
 					
 					done < <(snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 1.3.6.1.4.1.6574.2.1.1)
 					
-					MinDSMVersion=7.0
 					/usr/bin/dpkg --compare-versions "$MinDSMVersion" gt "$DSMVersion"
 					if [ "$?" -eq "0" ]; then
 						#if this is DSM6, only post DSM6 related data
