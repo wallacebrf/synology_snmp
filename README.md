@@ -61,9 +61,9 @@
 <img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/single_server_4.png" alt="1313">
 <img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/single_server_5.png" alt="1313">
 
-The script gathers different SNMP based details from a synology NAS using SNMP version 3 (much more secure than version 2) such as the following and saves them to InfluxDb version 2:
+The script gathers different SNMP based details from a Synology NAS using SNMP version 3 (much more secure than version 2) such as the following and saves them to InfluxDb version 2:
 
-1. System: System Uptime, System Status, System Fan Status, Model Name, Serial Number, Upgrade Available, DSM Version, System Temp
+1. System: System Uptime, System Status, System Fan Status, Model Name, Serial Number, Upgrade Available, DSM Version, System Temp. If an Expansion unit (DX517 etc) is installed, it will gather Expansion Model, Expansion Status
 
 2. Memory: Total Memory, Real Memory Available, Buffer Memory Used, Cached Memory Used, Memory Free
 
@@ -71,17 +71,17 @@ The script gathers different SNMP based details from a synology NAS using SNMP v
 
 4. Volume: Volume Name, Volume Total Size, Volume Used Size
 
-5. RAID: RAID Name, RAID Status, RAID Free Size, RAID Total Size
+5. RAID: RAID Name, RAID Status, RAID Free Size, RAID Total Size. For DSM specifically, added the "Hot Spare Count" 
 
-6. Disk: Disk Name, Disk Model, Disk Type, Disk Status, Disk Temperature
+6. Disk: Disk Name, Disk Model, Disk Type, Disk Status, Disk Temperature. For DSM Specifically, added Disk Role, Smart DATA (Disk Retry Count, Bad Sector Count, Disk Remaining Life)
 
 7. UPS: UPS Battery Charge, UPS Load, UPS Status, UPS Battery Runtime
 
-8. Network: Interface Name, Bytes Recv, Bytes Sent 
+8. Network: Interface Name, Bytes Received, Bytes Sent 
 
-9. GPU: If this is a DVA (Deep Video Analysis) system, GPU usage, GPU Temperature, GPU Memory Usage, GPU Fan Speed
+9. GPU - If this is a DVA (Deep Video Analysis) system like the DVA3219 or DVA3221: GPU usage, GPU Temperature, GPU Memory Usage, GPU Fan Speed
 
-Some items like system, GPU, and disk temperatures can send alert email notifications based on configurable set-points. 
+Some items like system, GPU, CPU, and disk temperatures can send alert email notifications based on configurable set-points. 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -95,7 +95,7 @@ This project is written around a Synology NAS and their DSM specific SNMP OIDs a
 ### Prerequisites
 
 1. this script is designed to be executed every 60 seconds
-2. this script requires the installation of synology MailPlus server package in package center in order to send emails. If it is not installed, the script will still work it just will not be able to send emails. 
+2. this script requires the installation of Synology MailPlus server package in package center in order to send emails. If it is not installed, the script will still work it just will not be able to send emails. 
 	#the mail plus server must be properly configured to relay received messages to another email account. 
 3. RAMDISK
 	#NOTE: to reduce disk IOPS activity, it is recommended to create a RAMDISK for the temp files this script uses
@@ -107,8 +107,8 @@ This project is written around a Synology NAS and their DSM specific SNMP OIDs a
 
 4. this script only supports SNMP V3. This is because lower versions are less secure 
 	#SNMP must be enabled on the host NAS for the script to gather the NAS NAME
-	#the snmp settings for the NAS can all be entered into the web administration page
-5. This script can be run through synology Task Scheduler. However it has been observed that running large scripts like this as frequently as every 60 seconds causes the synoschedtask system application to use large amounts of resources and causes the script to execute slowly
+	#the SNMP settings for the NAS can all be entered into the web administration page
+5. This script can be run through Synology Task Scheduler. However it has been observed that running large scripts like this as frequently as every 60 seconds causes the synoschedtask system application to use large amounts of resources and causes the script to execute slowly
 	#details of this issue can be seen here:
 	#https://www.reddit.com/r/synology/comments/kv7ufq/high_disk_usage_on_disk_1_caused_by_syno_task/
 	#to fix this it is recommend to directly edit the crontab at /etc/crontab
@@ -160,14 +160,15 @@ log_file_location="/volume1/web/logging/notifications"
 
 for the variables above, ensure the "/volume1/web" is the correct location for the root of the PHP web server, correct as required
 
-3. delete the lines between ```#for my personal use as i have multiple synology systems, these lines can be deleted by other users``` and ```#Script Start``` as those are for my personal use as i use this script for several units that have slightly different configurations	
+3. delete the lines between ```#for my personal use as i have multiple Synology systems, these lines can be deleted by other users``` and ```#Script Start``` as those are for my personal use as i use this script for several units that have slightly different configurations	
 
-4. find the line 
+4. find the lines
 ```
-curl -XPOST "http://$influxdb_host:$influxdb_port/api/v2/write?bucket=$influxdb_name&org=home" -H "Authorization: Token $influxdb_pass" --data-raw "$post_url"
+influx_http_type="http" #set to "http" or "https" based on your influxDB version
+influxdb_org="home"
 ``` 
 
-Ensure the ```&org=home``` matches the name of the organization used in your configuration
+Ensure the organization matches your configuration and ensure the http type matches how your system is configured
 
 ### Configuration "server2_config.php"
 
@@ -197,17 +198,17 @@ the variable ```page_title``` controls the title of the page when viewing it in 
 4. configure email settings, the destination email address, the from email address, and the frequency in which notification emails will be re-sent if the issue still persists
 5. check what types of data is to be collected from the NAS
 6. enter the details for influxDB.
---> for influxdb 2, the "database" will be the randomly generated string identifying the data bucket, for example "a6878dc5c298c712"
---> for influxdb 2, the "User Name of Influx DB" can be left as the default value
---> for influxdb 2, the "Password" is the API access key / Authorization Token. 
+--> for InfluxDB 2, the "database" will be the randomly generated string identifying the data bucket, for example "a6878dc5c298c712"
+--> for InfluxDB 2, the "User Name of Influx DB" can be left as the default value
+--> for InfluxDB 2, the "Password" is the API access key / Authorization Token. 
 7. on the NAS, go to Control Panel --> Terminal & SNMP --> SNMP and configure the SNMP version 3 settings. 
-8. configure the SNMP settings for the synology NAS. these settings must match the settings the NAS has been configured to use. 
+8. configure the SNMP settings for the Synology NAS. these settings must match the settings the NAS has been configured to use. 
 
 
 ### Configuration of crontab
 
 
-This script can be run through synology Task Scheduler. However it has been observed that running large scripts like this as frequently as every 60 seconds causes the synoschedtask system application to use large amounts of resources and causes the script to execute slowly
+This script can be run through Synology Task Scheduler. However it has been observed that running large scripts like this as frequently as every 60 seconds causes the synoschedtask system application to use large amounts of resources and causes the script to execute slowly
 	#details of this issue can be seen here:
 	#https://www.reddit.com/r/synology/comments/kv7ufq/high_disk_usage_on_disk_1_caused_by_syno_task/
 	#to fix this it is recommend to directly edit the crontab at /etc/crontab
@@ -222,9 +223,9 @@ This script can be run through synology Task Scheduler. However it has been obse
 ### Grafana Dashboards
 
 
-Two dashboard JSON files are available. The entire dashboard is written around the new FLUX language which is more powerful and simpler to use. One used when monitoring a single Synology Unit. The other is for monitoring multiple Synology Units on a single dashboard. The current version supplied here shows the data for three different synology units
+Two dashboard JSON files are available. The entire dashboard is written around the new FLUX language which is more powerful and simpler to use. One used when monitoring a single Synology Unit. The other is for monitoring multiple Synology Units on a single dashboard. The current version supplied here shows the data for three different Synology units
 
-the Dashboard requires the use of an add-on plugin from
+the Dashboard requires the use of an add-on plug in from
 https://grafana.com/grafana/plugins/mxswat-separator-panel/
 
 there are three different items in the JSON that will need to be adjusted to match your installation. the first the bucket it is drawing data from. edit this to match your bucket name
@@ -232,7 +233,7 @@ there are three different items in the JSON that will need to be adjusted to mat
 from(bucket: \"Test/autogen\")
 ```
 
-next, edit the name of the synology NAS as reported by the script. the "Server_NVR" items are included "mixed into" the "Server2" items to demonstrate things like GPU usage, GPU VRAM usage, and GPU fan speed. if theSynology system is not a DVA unit with a graphics card, these "Server_NVR" items can be deleted. 
+next, edit the name of the Synology NAS as reported by the script. the "Server_NVR" items are included "mixed into" the "Server2" items to demonstrate things like GPU usage, GPU VRAM usage, and GPU fan speed. if theSynology system is not a DVA unit with a graphics card, these "Server_NVR" items can be deleted. 
 
 ```
 r[\"nas_name\"] == \"Server2\")
