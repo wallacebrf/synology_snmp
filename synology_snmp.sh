@@ -1,5 +1,5 @@
 #!/bin/bash
-#version 2.31 dated 9/8/2022
+#version 2.4 dated 9/11/2022
 #By Brian Wallace
 
 #based on the script found here by user kernelkaribou
@@ -16,7 +16,7 @@
 #***************************************************
 #Dependencies:
 #***************************************************
-#1.) this script is designed to be executed every 60 seconds
+#1.) this script is designed to be executed every 60 seconds. It has a configurable parameter "capture_interval" that allows the script to loop 6x, 4x, 2x, or 1x time(s) every 60 seconds. 
 #2.) this script requires the installation of synology MailPlus server package in package center in order to send emails. 
 	#the mail plus server must be properly configured to relay received messages to another email account. 
 	#this is required as the "sendmail" command is not installed by default on synology DSM but is installed with Mail Plus Server
@@ -42,6 +42,7 @@
 	#	*	*	*	*	*	root	$path_to_file/$filename
 	#details on crontab can be found here: https://man7.org/linux/man-pages/man5/crontab.5.html
 #6.) This script only supports InfluxdB version 2. as version 1.x is no longer supported, it is recommended to upgrade to version 2 anyways
+#7.) this script only supports DSM versions 6 and 7. 
 
 
 #########################################
@@ -55,8 +56,14 @@ debug=0
 disk_messge_tracker=();
 MinDSMVersion=7.0
 
+#depending on the number of drives, if the system has SSD's or regular HDD disks, the time required to execute the entire script takes time and may not be the same on all systems.
+#this value can be adjusted to ensure the script executes all of its capture intervals within 60 seconds. 
+#otherwise the script will not allow the next script to execute and a ~60 second period of time will NOT have data collected. 
+#capture_interval_adjustment=6 
 
-#for my personal use as i have multiple synology systems, these lines can be deleted by other users and the 4x lines above can be un-commented
+
+
+#for my personal use as i have multiple synology systems, these lines can be deleted by other users and the 4x lines above can be un-commented. Also un-comment the capture_interval_adjustment variable above
 ######################################################################################
 sever_type=1 #1=server2, 2=serverNVR, 3=serverplex
 
@@ -65,6 +72,7 @@ if [[ $sever_type == 1 ]]; then
 	lock_file_location="/volume1/web/logging/notifications/synology_snmp.lock"
 	config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
 	log_file_location="/volume1/web/logging/notifications"
+	capture_interval_adjustment=6
 fi
 
 if [[ $sever_type == 2 ]]; then
@@ -72,6 +80,7 @@ if [[ $sever_type == 2 ]]; then
 	lock_file_location="/volume1/web/logging/notifications/synology_snmp.lock"
 	config_file_location="/volume1/web/logging/system_config_NVR2.txt"
 	log_file_location="/volume1/web/logging/notifications"
+	capture_interval_adjustment=8
 fi
 
 if [[ $sever_type == 3 ]]; then
@@ -79,6 +88,7 @@ if [[ $sever_type == 3 ]]; then
 	lock_file_location="/volume1/web/logging/notifications/synology_snmp.lock"
 	config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
 	log_file_location="/volume1/web/logging/notifications"
+	capture_interval_adjustment=3
 fi
 
 ######################################################################################
@@ -101,8 +111,14 @@ function disk_temp_email(){
 			echo "subject: $disk_name Temperature Warning on $nas_name" >> $log_file_location/disk_email.txt
 			echo "" >> $log_file_location/disk_email.txt
 			echo $mailbody >> $log_file_location/disk_email.txt
-			cat $log_file_location/disk_email.txt | sendmail -t
-			disk_messge_tracker[$id]=0
+			local email_response=$(sendmail -t < $log_file_location/disk_email.txt  2>&1)
+			if [[ "$email_response" == "" ]]; then
+				echo "" |& tee -a $log_file_location/disk_email.txt
+				echo "Email Sent Successfully" |& tee -a $log_file_location/disk_email.txt
+				disk_messge_tracker[$id]=0
+			else
+				echo "Warning, an error occurred while sending the Disk Temperature notification email. the error was: $email_response" |& tee $log_file_location/disk_email.txt
+			fi
 		fi
 	fi
 }
@@ -121,6 +137,13 @@ if [ -r "$config_file_location" ]; then
 	#file is available and readable 
 	read input_read < $config_file_location
 	explode=(`echo $input_read | sed 's/,/\n/g'`) #explode on the comma separating the variables
+	
+	#verify the correct number of configuration parameters are in the configuration file
+	if [[ ! ${#explode[@]} == 33 ]]; then
+		echo "WARNING - the configuration file is incorrect or corrupted. It should have 33 parameters, it currently has ${#explode[@]} parameters."
+		exit 1
+	fi
+	
 	max_disk_temp_f=${explode[0]}
 	max_CPU0_f=${explode[1]}
 	email_address=${explode[2]}
@@ -190,6 +213,9 @@ if [ -r "$config_file_location" ]; then
 		echo "capture_GPU is $capture_GPU"
 		echo "max_GPU_f is $max_GPU_f"
 		echo "max_GPU is $max_GPU"
+		echo "from_email_address is $from_email_address"
+		echo "influx_http_type is $influx_http_type"
+		echo "influxdb_org is $influxdb_org"
 	fi
 
 
@@ -198,18 +224,18 @@ if [ -r "$config_file_location" ]; then
 		#confirm that the synology SNMP settings were configured otherwise exit script
 		if [ "$nas_snmp_user" = "" ];then
 			echo "Synology NAS Username is BLANK, please configure the SNMP settings"
-			exit
+			exit 1
 		else
 			if [ "$snmp_authPass1" = "" ];then
 				echo "Synology NAS Authentication Password is BLANK, please configure the SNMP settings"
-				exit
+				exit 1
 			else
 				if [ "$snmp_privPass2" = "" ];then
 					echo "Synology NAS Privacy Password is BLANK, please configure the SNMP settings"
-					exit
+					exit 1
 				else
 					if [ $debug -eq 1 ];then
-						echo "Synology SNTP settings are not Blank"
+						echo "Synology SNMP settings are not Blank"
 					fi
 				fi
 			fi
@@ -266,7 +292,7 @@ if [ -r "$config_file_location" ]; then
 			do
 				if [ "${explode[$counter]}" = "" ]; then
 					echo "reading previous drive email tracking data failed, exiting script, suggest deleting file \"$email_logging_file_location\" and running script again to re-create file"
-					exit
+					exit 1
 				else
 					disk_messge_tracker+=( ${explode[$counter]} );
 					if [ $debug -eq 1 ]; then
@@ -277,7 +303,7 @@ if [ -r "$config_file_location" ]; then
 
 			if [ "${explode[$counter]}" = "" ]; then
 				echo "reading previous CPU email tracking data failed, exiting script, suggest deleting file \"$email_logging_file_location\" and running script again to re-create file"
-				exit
+				exit 1
 			else
 				CPU_message_tracker=${explode[$counter]}
 				if [ $debug -eq 1 ]; then
@@ -288,7 +314,7 @@ if [ -r "$config_file_location" ]; then
 			if [ $GPU_installed -eq 1 ];then
 				if [ "${explode[$counter]}" = "" ]; then
 					echo "reading previous GPU email tracking data failed, exiting script, suggest deleting file \"$email_logging_file_location\" and running script again to re-create file"
-					exit
+					exit 1
 				else
 					GPU_message_tracker=${explode[$counter]}
 					if [ $debug -eq 1 ]; then
@@ -375,6 +401,17 @@ if [ -r "$config_file_location" ]; then
 			exit 1
 		fi
 
+		if [ ! $capture_interval -eq 10 ]; then
+			if [ ! $capture_interval -eq 15 ]; then
+				if [ ! $capture_interval -eq 30 ]; then
+					if [ ! $capture_interval -eq 60 ]; then
+						echo "capture interval is not one of the allowable values of 10, 15, 30, or 60 seconds. Exiting the script"
+						exit 1
+					fi
+				fi
+			fi
+		fi
+
 		#loop the script 
 		total_executions=$(( 60 / $capture_interval))
 		echo "Capturing $total_executions times"
@@ -399,9 +436,10 @@ if [ -r "$config_file_location" ]; then
 				#System Status,  1 is on line, 0 is failed/off line
 				system_status=`snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 SYNOLOGY-SYSTEM-MIB::systemStatus.0 -Oqv`
 				
-				#Fan status1 is on line, 0 is failed/off line
+				#Fan status, 1 is on line, 0 is failed/off line
 				system_fan_status=`snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 SYNOLOGY-SYSTEM-MIB::systemFanStatus.0 -Oqv`
 				
+				#Fan status, 1 is on line, 0 is failed/off line
 				cpu_Fan_Status=`snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 SYNOLOGY-SYSTEM-MIB::cpuFanStatus.0 -Oqv`
 				
 				#Various SYNOLOGY-SYSTEM stats for common OID
@@ -463,14 +501,20 @@ if [ -r "$config_file_location" ]; then
 					then
 					#echo the email has not been sent in over $email_interval minutes, re-sending email
 						if [ $sendmail_installed -eq 1 ];then
-							mailbody="Warning the temperature ($system_temp C) of the system CPU on $nas_name has exceeded $max_CPU0 Degrees C / $max_CPU0_f Degrees F "
+							mailbody="Warning the temperature ($system_temp C) of the system CPU on $nas_name has exceeded $max_CPU0 Degrees C / $max_CPU0_f Degrees F. The Temperature is currently $system_temp degrees"
 							echo "from: $from_email_address " > $log_file_location/system_contents.txt
 							echo "to: $email_address " >> $log_file_location/system_contents.txt
 							echo "subject: $nas_name CPU Temperature Warning " >> $log_file_location/system_contents.txt
 							echo "" >> $log_file_location/system_contents.txt
 							echo $mailbody >> $log_file_location/system_contents.txt
-							cat $log_file_location/system_contents.txt | sendmail -t
-							CPU_message_tracker=0
+							email_response=$(sendmail -t < $log_file_location/system_contents.txt  2>&1)
+							if [[ "$email_response" == "" ]]; then
+								echo "" |& tee -a $log_file_location/system_contents.txt
+								echo "Email Sent Successfully" |& tee -a $log_file_location/system_contents.txt
+								CPU_message_tracker=0
+							else
+								echo "WARNING - Could not send Email Notification that the system temperature is too high. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/system_contents.txt
+							fi
 						else
 							echo "WARNING - Could not send Email Notification that the system temperature is too high. The temperature ($system_temp C) of the system CPU on $nas_name has exceeded $max_CPU0 Degrees C / $max_CPU0_f Degrees F"
 						fi
@@ -965,18 +1009,24 @@ if [ -r "$config_file_location" ]; then
 							if [ $GPU_message_tracker -ge $email_interval ]
 							then
 							#echo the email has not been sent in over 1 hour, re-sending email
-								mailbody="Warning the temperature of the NVR GPU on Server NVR has exceeded $max_GPU Degrees C / $max_GPU_f Degrees F "
+								mailbody="Warning the temperature of the NVR GPU on $nas_name has exceeded $max_GPU Degrees C / $max_GPU_f Degrees F. The Temperature is currently $gpuTemperature degrees"
 								echo "from: $from_email_address " > $log_file_location/GPU0_contents.txt
 								echo "to: $email_address " >> $log_file_location/GPU0_contents.txt
-								echo "subject: Server_NVR GPU Temperature Warning " >> $log_file_location/GPU0_contents.txt
+								echo "subject: $nas_name GPU Temperature Warning " >> $log_file_location/GPU0_contents.txt
 								echo "" >> $log_file_location/GPU0_contents.txt
 								echo $mailbody >> $log_file_location/GPU0_contents.txt
-								cat $log_file_location/GPU0_contents.txt | sendmail -t
-								GPU_message_tracker=0
+								email_response=$(sendmail -t < $log_file_location/GPU0_contents.txt  2>&1)
+								if [[ "$email_response" == "" ]]; then
+									echo "" |& tee -a $log_file_location/GPU0_contents.txt
+									echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
+									GPU_message_tracker=0
+								else
+									echo "WARNING - could not send email notification that the GPU is overheating. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
+								fi
 							fi
 						fi
 					else
-						echo "WARNING - could not send email notification that the GPU is overheating. the temperature of the NVR GPU on Server NVR has exceeded $max_GPU Degrees C / $max_GPU_f Degrees F"
+						echo "WARNING - could not send email notification that the GPU is overheating. the temperature of the NVR GPU on $nas_name has exceeded $max_GPU Degrees C / $max_GPU_f Degrees F"
 					fi
 				else
 					echo "Skipping GPU capture"
@@ -1001,7 +1051,7 @@ if [ -r "$config_file_location" ]; then
 			
 			#Sleeping for capture interval unless its last capture then we don't sleep
 			if (( $i < $total_executions)); then
-				sleep $(( $capture_interval -6))
+				sleep $(( $capture_interval - $capture_interval_adjustment))
 			else
 				#increment each disk counter by one to keep track of "minutes elapsed" since this script is expected to execute every minute 
 				
