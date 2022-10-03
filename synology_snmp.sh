@@ -1,5 +1,5 @@
 #!/bin/bash
-#version 2.4 dated 9/11/2022
+#version 2.5 dated 10/2/2022
 #By Brian Wallace
 
 #based on the script found here by user kernelkaribou
@@ -65,7 +65,7 @@ MinDSMVersion=7.0
 
 #for my personal use as i have multiple synology systems, these lines can be deleted by other users and the 4x lines above can be un-commented. Also un-comment the capture_interval_adjustment variable above
 ######################################################################################
-sever_type=1 #1=server2, 2=serverNVR, 3=serverplex
+sever_type=3 #1=server2, 2=serverNVR, 3=serverplex
 
 if [[ $sever_type == 1 ]]; then
 	email_logging_file_location="/volume1/web/logging/notifications/logging_variable2.txt"
@@ -139,8 +139,8 @@ if [ -r "$config_file_location" ]; then
 	explode=(`echo $input_read | sed 's/,/\n/g'`) #explode on the comma separating the variables
 	
 	#verify the correct number of configuration parameters are in the configuration file
-	if [[ ! ${#explode[@]} == 33 ]]; then
-		echo "WARNING - the configuration file is incorrect or corrupted. It should have 33 parameters, it currently has ${#explode[@]} parameters."
+	if [[ ! ${#explode[@]} == 38 ]]; then
+		echo "WARNING - the configuration file is incorrect or corrupted. It should have 38 parameters, it currently has ${#explode[@]} parameters."
 		exit 1
 	fi
 	
@@ -177,8 +177,11 @@ if [ -r "$config_file_location" ]; then
 	max_GPU_f=${explode[30]}
 	max_GPU=${explode[31]}
 	from_email_address=${explode[32]}
-	influx_http_type="http" #set to "http" or "https" based on your influxDB version
-	influxdb_org="home"
+	influx_http_type=${explode[33]} #set to "http" or "https" based on your influxDB version
+	influxdb_org=${explode[34]}
+	enable_SS_restart=${explode[35]} #if the unit is a DVA unit with a GPU, the GPU runs hot and has high GPU usage. If the temperature and GPU usage are too low, then for some reason the system is no longer performing deep video analysis. This option allows the package to be restarted automatically to try fixing the issue
+	SS_restart_GPU_usage_threshold=${explode[36]}
+	SS_restart_GPU_temp_threshold=${explode[37]}
 	
 	if [ $debug -eq 1 ]; then
 		echo "max_disk_temp_f is $max_disk_temp_f"
@@ -216,6 +219,9 @@ if [ -r "$config_file_location" ]; then
 		echo "from_email_address is $from_email_address"
 		echo "influx_http_type is $influx_http_type"
 		echo "influxdb_org is $influxdb_org"
+		echo "enable_SS_restart is $enable_SS_restart"
+		echo "SS_restart_GPU_usage_threshold is $SS_restart_GPU_usage_threshold"
+		echo "SS_restart_GPU_temp_threshold is $SS_restart_GPU_temp_threshold"
 	fi
 
 
@@ -972,6 +978,8 @@ if [ -r "$config_file_location" ]; then
 					
 					measurement="synology_gpu"
 					
+					SS_restart=0
+					
 					#The percentage of GPU time spent on processing user space in last 1 second
 					gpuUtilization=`snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 SYNOLOGY-GPUINFO-MIB::gpuUtilization.0 -Ovt`
 					
@@ -993,13 +1001,127 @@ if [ -r "$config_file_location" ]; then
 					#GPU FAN Speed
 					gpuFanSpeed=`nvidia-smi --query-gpu=fan.speed --format=csv,noheader`
 					
+					secondString=""
+					gpuUtilization=${gpuUtilization//\INTEGER: /$secondString} #filtering out the "INTEGER: " part of the string
+					gpuUtilization=${gpuUtilization//\ %/$secondString} #filtering out the "%" part of the string, so now we have just a number and nothing else
+					
+					if [ $debug -eq 1 ]; then
+						echo "gpuUtilization is $gpuUtilization"
+						echo "gpuTemperature is $gpuTemperature"
+					fi
+					
+					if [ $gpuUtilization -lt $SS_restart_GPU_usage_threshold ]; then
+						if [ $gpuTemperature -lt $SS_restart_GPU_temp_threshold ]; then
+							echo "Synology Surveillance Station appears to not be utilizing the GPU"
+							
+							if [ $GPU_message_tracker -ge $email_interval ]; then # has it been a certain amount of time since the last email notification?
+								status=$(/usr/syno/bin/synopkg is_onoff "SurveillanceStation")
+								if [ "$status" = "package SurveillanceStation is turned on" ]; then
+									if [ $enable_SS_restart -eq 1 ]; then
+										echo "Automatic Restarting of Synology Surveillance Station is enabled, proceeding with restart....."
+										echo "Stopping Synology Surveillance Station...."
+										if [ $debug -eq 1 ]; then
+											echo "Debug Mode - Shutting down Package SurveillanceStation"
+										else
+											/usr/syno/bin/synopkg stop "SurveillanceStation"
+										fi
+										sleep 1
+										status=$(/usr/syno/bin/synopkg is_onoff "SurveillanceStation")
+										if [ "$status" = "package SurveillanceStation is turned on" ]; then
+											if [ $sendmail_installed -eq 1 ]; then
+												mailbody="ALERT! - Synology Surveillance Station Appeared to no longer be utilizing the GPU. Automatic restart of Synology Surveillance Station was enabled and was unable to shutdown Surveillance Station. "
+												echo "from: $from_email_address " > $log_file_location/GPU0_contents.txt
+												echo "to: $email_address " >> $log_file_location/GPU0_contents.txt
+												echo "subject: $nas_name Synology Surveillance Station Low GPU Usage - Synology Surveillance Station Shutdown FAILED" >> $log_file_location/GPU0_contents.txt
+												echo "" >> $log_file_location/GPU0_contents.txt
+												echo $mailbody >> $log_file_location/GPU0_contents.txt
+												email_response=$(sendmail -t < $log_file_location/GPU0_contents.txt  2>&1)
+												if [[ "$email_response" == "" ]]; then
+													echo "" |& tee -a $log_file_location/GPU0_contents.txt
+													echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
+													GPU_message_tracker=0
+												else
+													echo "WARNING - could not send email notification. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
+												fi
+											fi
+										else
+											echo "Synology Surveillance Station successfully shutdown"
+											echo "Restarting Synology Surveillance Station...."
+											if [ $debug -eq 1 ]; then
+												echo "Debug Mode - Starting Package SurveillanceStation"
+											else
+												/usr/syno/bin/synopkg start "SurveillanceStation"
+											fi
+											sleep 1
+											status=$(/usr/syno/bin/synopkg is_onoff "SurveillanceStation")
+											if [ "$status" = "package SurveillanceStation is turned on" ]; then
+												if [ $sendmail_installed -eq 1 ]; then
+													mailbody="ALERT! - Synology Surveillance Station Appeared to no longer be utilizing the GPU. Automatic restart of Synology Surveillance Station was enabled and was successfully restarted. "
+													echo "from: $from_email_address " > $log_file_location/GPU0_contents.txt
+													echo "to: $email_address " >> $log_file_location/GPU0_contents.txt
+													echo "subject: $nas_name Synology Surveillance Station Low GPU Usage - Synology Surveillance Station Restarted" >> $log_file_location/GPU0_contents.txt
+													echo "" >> $log_file_location/GPU0_contents.txt
+													echo $mailbody >> $log_file_location/GPU0_contents.txt
+													email_response=$(sendmail -t < $log_file_location/GPU0_contents.txt  2>&1)
+													if [[ "$email_response" == "" ]]; then
+														echo "" |& tee -a $log_file_location/GPU0_contents.txt
+														echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
+														GPU_message_tracker=0
+													else
+														echo "WARNING - could not send email notification. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
+													fi
+												fi
+											else
+												if [ $sendmail_installed -eq 1 ]; then
+													mailbody="ALERT! - Synology Surveillance Station Appeared to no longer be utilizing the GPU. Automatic restart of Synology Surveillance Station was enabled and was NOT successfully restarted. "
+													echo "from: $from_email_address " > $log_file_location/GPU0_contents.txt
+													echo "to: $email_address " >> $log_file_location/GPU0_contents.txt
+													echo "subject: $nas_name Synology Surveillance Station Low GPU Usage - Synology Surveillance Station Restart FAILED" >> $log_file_location/GPU0_contents.txt
+													echo "" >> $log_file_location/GPU0_contents.txt
+													echo $mailbody >> $log_file_location/GPU0_contents.txt
+													email_response=$(sendmail -t < $log_file_location/GPU0_contents.txt  2>&1)
+													if [[ "$email_response" == "" ]]; then
+														echo "" |& tee -a $log_file_location/GPU0_contents.txt
+														echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
+														GPU_message_tracker=0
+													else
+														echo "WARNING - could not send email notification. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
+													fi
+												fi
+											fi
+										fi
+									else
+										#automatic restart is not enabled, so at least send a notification email 
+										if [ $sendmail_installed -eq 1 ]; then
+											mailbody="ALERT! - Synology Surveillance Station Appears to no longer be utilizing the GPU. Note, automatic restart of Synology Surveillance Station is not enabled. Manually check the status of Synology Surveillance Station."
+											echo "from: $from_email_address " > $log_file_location/GPU0_contents.txt
+											echo "to: $email_address " >> $log_file_location/GPU0_contents.txt
+											echo "subject: $nas_name Synology Surveillance Station Low GPU Usage " >> $log_file_location/GPU0_contents.txt
+											echo "" >> $log_file_location/GPU0_contents.txt
+											echo $mailbody >> $log_file_location/GPU0_contents.txt
+											email_response=$(sendmail -t < $log_file_location/GPU0_contents.txt  2>&1)
+											if [[ "$email_response" == "" ]]; then
+												echo "" |& tee -a $log_file_location/GPU0_contents.txt
+												echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
+												GPU_message_tracker=0
+											else
+												echo "WARNING - could not send email notification about GPU loading. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
+											fi
+										fi
+									fi
+								else
+									echo "Synology Surveillance Station is not running, skipping restart checks"
+								fi
+							fi
+						fi
+					fi
+					
 					
 					#System details to post
 					post_url=$post_url"$measurement,nas_name=$nas_name gpu_utilization=$gpuUtilization,gpuMemoryUtilization=$gpuMemoryUtilization,gpuMemoryFree=$gpuMemoryFree,gpuMemoryUsed=$gpuMemoryUsed,gpuMemoryTotal=$gpuMemoryTotal,gpuTemperature=$gpuTemperature,gpuFanSpeed=$gpuFanSpeed
 			"
-					secondString=""
+			
 					post_url=${post_url//\INTEGER: /$secondString}
-					secondString=""
 					post_url=${post_url//\ %/$secondString}
 
 					if [ $sendmail_installed -eq 1 ]; then
@@ -1054,6 +1176,7 @@ if [ -r "$config_file_location" ]; then
 				sleep $(( $capture_interval - $capture_interval_adjustment))
 			else
 				#increment each disk counter by one to keep track of "minutes elapsed" since this script is expected to execute every minute 
+				#this is used to determine when the last email notification was sent
 				
 				for (( counter=0; counter<$number_drives_in_system; counter++ ))
 				do
@@ -1065,6 +1188,8 @@ if [ -r "$config_file_location" ]; then
 					fi
 				done
 			
+				#increment CPU and GPU counter by one to keep track of "minutes elapsed" since this script is expected to execute every minute 
+				#this is used to determine when the last email notification was sent
 				let CPU_message_tracker=CPU_message_tracker+1
 				echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
 			
