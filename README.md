@@ -81,6 +81,8 @@ The script gathers different SNMP based details from a Synology NAS using SNMP v
 
 9. GPU - If this is a DVA (Deep Video Analysis) system like the DVA3219 or DVA3221: GPU usage, GPU Temperature, GPU Memory Usage, GPU Fan Speed
 
+10. for DVA untis with Graphics Cards, the script can monitor GPU usage and temperature. If the Usage AND Temperature both drop below configurable setpoints then Synology Surveillance will be auto-restarted and an email notification sent. This was added as sometimes the Deep Video Analysis (DVA) processes stop, causing GPU usage and temperature to drop. Restarting the Surveillance station package easilly fixes this issue.  
+
 Some items like system, GPU, CPU, and disk temperatures can send alert email notifications based on configurable set-points. 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
