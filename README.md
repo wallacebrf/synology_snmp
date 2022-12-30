@@ -211,6 +211,18 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
 }
 ```
 
+depending on the version of PHP used on your server environment and its corresponding settings, when the configuration settings are submitted in the server2_config.php file, PHP generated errors about variable issues may be displayed. if this occurs, change the following line
+
+```
+error_reporting(E_ALL ^ E_NOTICE);
+```
+
+to the following
+
+```
+error_reporting(E_NOTICE);
+```
+
 ### Configuration of required settings
 
 <img src="https://github.com/wallacebrf/synology_snmp/blob/main/config_1.png" alt="1313">
