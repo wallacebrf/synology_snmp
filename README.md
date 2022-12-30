@@ -98,28 +98,36 @@ This project is written around a Synology NAS and their DSM specific SNMP OIDs a
 
 1. this script is designed to be executed every 60 seconds
 2. this script requires the installation of Synology MailPlus server package in package center in order to send emails. If it is not installed, the script will still work it just will not be able to send emails. 
-	#the mail plus server must be properly configured to relay received messages to another email account. 
+
+the mail plus server must be properly configured to relay received messages to another email account. 
+
 3. RAMDISK
-	#NOTE: to reduce disk IOPS activity, it is recommended to create a RAMDISK for the temp files this script uses
-	#to do so, create a scheduled task on boot up in Synology Task Scheduler to add the following line
+	
+		NOTE: to reduce disk IOPS activity, it is recommended to create a RAMDISK for the temp files this script uses to do so, create a scheduled task on boot up in Synology Task Scheduler to add the following line
 
-		#mount -t tmpfs -o size=1% ramdisk $notification_file_location
+		mount -t tmpfs -o size=1% ramdisk $notification_file_location
 
-	where "$notification_file_location" is the location you want the files stored and is a variable configured below
+		where "$notification_file_location" is the location you want the files stored and is a variable configured below
 
 4. this script only supports SNMP V3. This is because lower versions are less secure 
-	#SNMP must be enabled on the host NAS for the script to gather the NAS NAME
-	#the SNMP settings for the NAS can all be entered into the web administration page
+	
+		SNMP must be enabled on the host NAS for the script to gather the NAS NAME
+		the SNMP settings for the NAS can all be entered into the web administration page
+		
 5. This script can be run through Synology Task Scheduler. However it has been observed that running large scripts like this as frequently as every 60 seconds causes the synoschedtask system application to use large amounts of resources and causes the script to execute slowly
-	#details of this issue can be seen here:
-	#https://www.reddit.com/r/synology/comments/kv7ufq/high_disk_usage_on_disk_1_caused_by_syno_task/
-	#to fix this it is recommend to directly edit the crontab at /etc/crontab
 	
-	#this can be accomplished using vi /etc/crontab
+		details of this issue can be seen here:
+		https://www.reddit.com/r/synology/comments/kv7ufq/high_disk_usage_on_disk_1_caused_by_syno_task/
 	
-	#add the following line: 
-	```	*	*	*	*	*	root	$path_to_file/$filename```
-	#details on crontab can be found here: https://man7.org/linux/man-pages/man5/crontab.5.html
+		to fix this it is recommend to directly edit the crontab at /etc/crontab
+	
+		this can be accomplished using vi /etc/crontab
+	
+		add the following line: 
+		
+		*	*	*	*	*	root	$path_to_file/$filename
+		
+		details on crontab can be found here: https://man7.org/linux/man-pages/man5/crontab.5.html
 6. This project requires a PHP server to be installed and configured to allow the web-administrative page to be available. 
 
 
@@ -145,9 +153,9 @@ note: ```%PHP_Server_Root%``` is what ever shred folder location the PHP web ser
 
 5. Create a scheduled task on boot up in Synology Task Scheduler to add the following line
 
-		#mount -t tmpfs -o size=1% ramdisk $notification_file_location
+		mount -t tmpfs -o size=1% ramdisk $notification_file_location
 
-		#where "$notification_file_location" is the location created above ```%PHP_Server_Root%/logging/notifications```
+		where "$notification_file_location" is the location created above "%PHP_Server_Root%/logging/notifications"
 
 ### Configuration "synology_snmp.sh"
 
@@ -245,15 +253,15 @@ error_reporting(E_NOTICE);
 
 
 This script can be run through Synology Task Scheduler. However it has been observed that running large scripts like this as frequently as every 60 seconds causes the synoschedtask system application to use large amounts of resources and causes the script to execute slowly
-	#details of this issue can be seen here:
-	#https://www.reddit.com/r/synology/comments/kv7ufq/high_disk_usage_on_disk_1_caused_by_syno_task/
-	#to fix this it is recommend to directly edit the crontab at /etc/crontab
+details of this issue can be seen here:
+https://www.reddit.com/r/synology/comments/kv7ufq/high_disk_usage_on_disk_1_caused_by_syno_task/
+
+to fix this it is recommend to directly edit the crontab at /etc/crontab using ```vi /etc/crontab```
 	
-	#this can be accomplished using vi /etc/crontab
-	
-	#add the following line: 
-	```	*	*	*	*	*	root	$path_to_file/$filename```
-	#details on crontab can be found here: https://man7.org/linux/man-pages/man5/crontab.5.html
+add the following line: 
+```	*	*	*	*	*	root	$path_to_file/$filename```
+
+details on crontab can be found here: https://man7.org/linux/man-pages/man5/crontab.5.html
 
 
 ### Grafana Dashboards
