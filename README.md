@@ -188,6 +188,28 @@ the ```form_submit_location``` can either be set to the name of the "server2_con
 
 the variable ```page_title``` controls the title of the page when viewing it in a browser. 
 
+the server2_config.php file by default automatically redirects from HTTP to HTTPS. if this behavior is not required or desired, delete the following lines from the beginning of the file
+
+```
+if($_SERVER['HTTPS']!="on") {
+
+$redirect= "https://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
+
+header("Location:$redirect"); } 
+```
+
+the server2_config.php file by default requires a user to be logged in with a valid session otherwise will forward to a file "login.php". This is done for added security. The ```login.php``` file is not available in this repo, and if sessions are desired, they will need to be self generated. However if your server environment does not use active users and or sessions, delete the following lines from the code
+
+```
+// Initialize the session
+if(session_status() !== PHP_SESSION_ACTIVE) session_start();
+ 
+// Check if the user is logged in, if not then redirect him to login page
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
+    header("location: login.php");
+    exit;
+}
+```
 
 ### Configuration of required settings
 
