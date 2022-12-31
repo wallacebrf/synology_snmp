@@ -219,22 +219,44 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
 }
 ```
 
-depending on the version of PHP used on your server environment and its corresponding settings, when the configuration settings are submitted in the server2_config.php file, PHP generated errors about variable issues may be displayed. if this occurs, change the following line
+### Configuration of synology web server "http" user permissions
 
-```
-error_reporting(E_ALL ^ E_NOTICE);
-```
+by default the synology user "http" that web station uses does not have write permissions to the "web" file share. 
 
-to the following
+1. go to Control Panel -> User & Group -> "Group" tab
+2. click on the "http" user and press the "edit" button
+3. go to the "permissions" tab
+4. scroll down the list of shared folders to find "web" and click on the right checkbox under "customize" 
+5. check ALL boxes and click "done"
+6. Verify the window indicates the "http" user group has "Full Control" and click the checkbox at the bottom "Apply to this folder, sub folders and files" and click "Save"
 
-```
-error_reporting(E_NOTICE);
-```
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/http_user1.png" alt="1313">
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/http_user2.png" alt="1314">
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/http_user3.png" alt="1314">
+
+### Configuration of synology SNMP settings
+
+by default synology DSM does not have SNMP settings enabled. This script requires them to be enabled. 
+
+1. Control Panel -> Terminal & SNMP -> "SNMP" tab
+2. check the box "Enable SNMP Service"
+3. Leave the following box UNCHECKED "SNMPv1, SNMPv2c service" as we only want SNMP version 3
+4. check the box "SNMPv3 service"
+5. enter a "Username" without spaces, choose a "protocol" and "password"
+6. ensure the "Enable SNMP privacy" is checked and enter a desired protocol and a password. it may be the same password used above or can be a different password
+7. click apply to save the settings
+
+document all of the protocols, passwords and user information entered in Synology Control panel as this same informaiton will need to entered into the configuration web page in the next steps
+
+NOTE: if firewall rules are enabled on the synology system, the SNMP service port may need to be opened if this script is not running on this particular physical server. This set of instructions will not detail how to configure firewall rules. 
+
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/snmp1.png" alt="1313">
+
 
 ### Configuration of required settings
 
-<img src="https://github.com/wallacebrf/synology_snmp/blob/main/Images/config_1.png" alt="1313">
-<img src="https://github.com/wallacebrf/synology_snmp/blob/main/Images/config_2.png" alt="1314">
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/config_1.png" alt="1313">
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/config_2.png" alt="1314">
 
 1. now that the files are where they need to be, using a browser go to the "server2_config.php" page. when the page loads for the first time, it will automatically create a "system_config2.txt" in the config directory. the values will all be default values and must be configured. 
 2. ensure the script is enabled
@@ -243,13 +265,103 @@ error_reporting(E_NOTICE);
 5. check what types of data is to be collected from the NAS
 6. enter the details for influxDB.
 --> for InfluxDB 2, the "database" will be the randomly generated string identifying the data bucket, for example "a6878dc5c298c712"
---> for InfluxDB 2, the "User Name of Influx DB" can be left as the default value
+--> for InfluxDB 2, the "User Name of Influx DB" can be left as the default value as this is NOT required for InfluxDB version 2 and higher. 
 --> for InfluxDB 2, the "Password" is the API access key / Authorization Token. 
-7. on the NAS, go to Control Panel --> Terminal & SNMP --> SNMP and configure the SNMP version 3 settings. 
-8. configure the SNMP settings for the Synology NAS. these settings must match the settings the NAS has been configured to use. 
+7. configure the SNMP settings. these settings must match the settings the NAS has been configured to use as configured previously. 
+
+### Test running the ```synology_snmp.sh``` file for the first time
+
+Now that the required configuration files are made using the web-interface, we can ensure the bash script operates correctly. 
+
+1. open the ```synology_snmp.sh``` file for editing. find the line ```debug=0``` and change the zero to a one ```debug=1``` to enable verbose output to assist with debugging
+2. open SSH and naviagte to where the ```synology_snmp.sh``` file is located. type the following command ```bash synology_snmp.sh``` and press enter
+3. the script will run and load all of the configuration settings. in debug mode it will print out all of the configuration parameters. verify they are correct
+```
+max_disk_temp_f is 65
+max_CPU0_f is 65
+email_address is admin@admin.com
+email_interval is 60
+capture_system is 1
+capture_memory is 1
+capture_cpu is 1
+capture_volume is 1
+capture_raid is 1
+capture_disk is 1
+capture_ups is 1
+capture_networkis 1
+capture_interval is 60
+nas_url is 10.10.10.10
+influxdb_host is 10.10.10.10
+influxdb_port is 8086
+influxdb_name is name
+influxdb_user is user
+influxdb_pass is REDACTED
+script_enable is 1
+max_disk_temp is 18
+max_CPU0 is 18
+snmp_authPass1 is REDACTED
+snmp_privPass2 is REDACTED
+number_drives_in_system is 12
+GPU_installed is 0
+nas_snmp_user is user
+snmp_auth_protocol is MD5
+snmp_privacy_protocol is AES
+capture_GPU is 0
+max_GPU_f is 65
+max_GPU is 18
+from_email_address is admin@admin.com
+influx_http_type is https
+influxdb_org is org
+enable_SS_restart is 0
+SS_restart_GPU_usage_threshold is 15
+SS_restart_GPU_temp_threshold is 54
+Synology SNMP settings are not Blank
+WARNING! ---- MailPlus Server NOT is installed, cannot send email notifications
+NVidia Drivers are not installed
+/volume2/web/synology_snmp/logging/notifications/logging_variable2.txt is not available, writing default values
+/volume2/web/synology_snmp/logging/notifications/logging_variable2.txt created with default values. Re-run the script.
+```
+
+4. run the command ```bash synology_snmp.sh``` and press enter again this time the script should operate normally. 
+NOTE: if ```MailPlus Server``` is not installed, the script will give warnings that it is not installed. if this is acceptable then ignore the warnings
+NOTE: if this is a regular Synology NAS and not a DVA unit like the DVA3219, DVA3221 etc, then no GPU will be available and the warning ```NVidia Drivers are not installed``` can be ignored
+5. while debug mode is enabled, each time the script runs it will output the tracking information for "disk_messge_tracker" and "CPU_message_tracker"
+these values increment during executions to allow the script to track the amount of time that has passed since an email notification was last sent. 
+
+```
+disk_messge_tracker id 0 is equal to: 0
+disk_messge_tracker id 1 is equal to: 0
+disk_messge_tracker id 2 is equal to: 0
+disk_messge_tracker id 3 is equal to: 0
+disk_messge_tracker id 4 is equal to: 0
+disk_messge_tracker id 5 is equal to: 0
+disk_messge_tracker id 6 is equal to: 0
+disk_messge_tracker id 7 is equal to: 0
+disk_messge_tracker id 8 is equal to: 0
+disk_messge_tracker id 9 is equal to: 0
+disk_messge_tracker id 10 is equal to: 0
+disk_messge_tracker id 11 is equal to: 0
+CPU_message_tracker is equal to 0
+```
+6. at the end of the script, it will output the results from InfluxDB. ensure you do NOT see any instances of the following
+
+```{"code":"invalid","message":"unable to parse```
+
+or
+
+```No Such Instance currently exists at this OID```
+
+```invalid number``` 
+
+these errors indicate that InfluxDB cannot intake the data properly 
+
+7.) after it is confirmed the script is working without errors and that it is confirmed that InfluxDB is receiving the data correctly, change the ```debug=1``` back to a ```debug=0``` 
+8.) now proceed with editing the crontab file to start the automatic execution of the script ever 60 seconds. 
 
 
 ### Configuration of crontab
+
+NOTE: ONLY EDIT THE CRONTAB FILE AFTER IT IS CONFIRMED THE SCRIP AND PHP FILES ARE INSTALLED AND WORKING PER INSTRUCTIONS ABOVE
 
 
 This script can be run through Synology Task Scheduler. However it has been observed that running large scripts like this as frequently as every 60 seconds causes the synoschedtask system application to use large amounts of resources and causes the script to execute slowly
