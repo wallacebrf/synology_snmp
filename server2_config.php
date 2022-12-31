@@ -1,5 +1,5 @@
 <?php
-//Version 4.0 dated 10/3/2022
+//Version 4.01 dated 12/31/2022
 //By Brian Wallace
 if($_SERVER['HTTPS']!="on") {
 
@@ -15,7 +15,7 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
     header("location: login.php");
     exit;
 }
-error_reporting(E_ALL ^ E_NOTICE);
+error_reporting(E_NOTICE);
 include $_SERVER['DOCUMENT_ROOT']."/functions.php";
 
 //USER DEFINED VARIABLES
