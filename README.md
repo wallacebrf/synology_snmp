@@ -119,7 +119,7 @@ the mail plus server must be properly configured to relay received messages to a
 		details of this issue can be seen here:
 		https://www.reddit.com/r/synology/comments/kv7ufq/high_disk_usage_on_disk_1_caused_by_syno_task/
 	
-		to fix this it is recommend to directly edit the crontab at /etc/crontab
+		to fix this it is recommend to directly edit the crontab at /etc/crontab ONLY AFTER THE SCRIPT HAS BEEN TESTED AND CONFIRMED TO WORK. updating crontab is also detailed at the end of this readme
 	
 		this can be accomplished using vi /etc/crontab
 	
@@ -143,7 +143,7 @@ Note: this assumes InfluxDB version 2 and Grafana are already installed and prop
 3. %PHP_Server_Root%/logging/notifications
 ```
 
-note: ```%PHP_Server_Root%``` is what ever shred folder location the PHP web server root directory is configured to be.
+note: ```%PHP_Server_Root%``` is what ever shared folder location the PHP web server root directory is configured to be.
 
 2. Place the ```functions.php``` file in the root of the PHP web server running on the NAS
 
@@ -246,7 +246,7 @@ by default synology DSM does not have SNMP settings enabled. This script require
 6. ensure the "Enable SNMP privacy" is checked and enter a desired protocol and a password. it may be the same password used above or can be a different password
 7. click apply to save the settings
 
-document all of the protocols, passwords and user information entered in Synology Control panel as this same informaiton will need to entered into the configuration web page in the next steps
+document all of the protocols, passwords and user information entered in Synology Control panel as this same information will need to entered into the configuration web page in the next steps
 
 NOTE: if firewall rules are enabled on the synology system, the SNMP service port may need to be opened if this script is not running on this particular physical server. This set of instructions will not detail how to configure firewall rules. 
 
@@ -356,6 +356,7 @@ or
 these errors indicate that InfluxDB cannot intake the data properly 
 
 7.) after it is confirmed the script is working without errors and that it is confirmed that InfluxDB is receiving the data correctly, change the ```debug=1``` back to a ```debug=0``` 
+
 8.) now proceed with editing the crontab file to start the automatic execution of the script ever 60 seconds. 
 
 
@@ -368,7 +369,7 @@ This script can be run through Synology Task Scheduler. However it has been obse
 details of this issue can be seen here:
 https://www.reddit.com/r/synology/comments/kv7ufq/high_disk_usage_on_disk_1_caused_by_syno_task/
 
-to fix this it is recommend to directly edit the crontab at /etc/crontab using ```vi /etc/crontab```
+to fix this it is recommend to directly edit the crontab at /etc/crontab using ```vi /etc/crontab``` 
 	
 add the following line: 
 ```	*	*	*	*	*	root	$path_to_file/$filename```
