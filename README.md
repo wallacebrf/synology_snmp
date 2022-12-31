@@ -55,11 +55,11 @@
 <!-- ABOUT THE PROJECT -->
 ### About_the_project_Details
 
-<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/single_server_1.png" alt="1313">
-<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/single_server_2.png" alt="1313">
-<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/single_server_3.png" alt="1313">
-<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/single_server_4.png" alt="1313">
-<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/single_server_5.png" alt="1313">
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/single_server_1.png" alt="1313">
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/single_server_2.png" alt="1313">
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/single_server_3.png" alt="1313">
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/single_server_4.png" alt="1313">
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/single_server_5.png" alt="1313">
 
 The script gathers different SNMP based details from a Synology NAS using SNMP version 3 (much more secure than version 2) such as the following and saves them to InfluxDb version 2:
 
@@ -233,8 +233,8 @@ error_reporting(E_NOTICE);
 
 ### Configuration of required settings
 
-<img src="https://github.com/wallacebrf/synology_snmp/blob/main/config_1.png" alt="1313">
-<img src="https://github.com/wallacebrf/synology_snmp/blob/main/config_2.png" alt="1314">
+<img src="https://github.com/wallacebrf/synology_snmp/blob/main/Images/config_1.png" alt="1313">
+<img src="https://github.com/wallacebrf/synology_snmp/blob/main/Images/config_2.png" alt="1314">
 
 1. now that the files are where they need to be, using a browser go to the "server2_config.php" page. when the page loads for the first time, it will automatically create a "system_config2.txt" in the config directory. the values will all be default values and must be configured. 
 2. ensure the script is enabled
