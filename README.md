@@ -101,34 +101,21 @@ This project is written around a Synology NAS and their DSM specific SNMP OIDs a
 
 the mail plus server must be properly configured to relay received messages to another email account. 
 
-3. RAMDISK
-	
-		NOTE: to reduce disk IOPS activity, it is recommended to create a RAMDISK for the temp files this script uses to do so, create a scheduled task on boot up in Synology Task Scheduler to add the following line
-
-		mount -t tmpfs -o size=1% ramdisk $notification_file_location
-
-		where "$notification_file_location" is the location you want the files stored and is a variable configured below
-
-4. this script only supports SNMP V3. This is because lower versions are less secure 
+3. this script only supports SNMP V3. This is because lower versions are less secure 
 	
 		SNMP must be enabled on the host NAS for the script to gather the NAS NAME
 		the SNMP settings for the NAS can all be entered into the web administration page
 		
-5. This script can be run through Synology Task Scheduler. However it has been observed that running large scripts like this as frequently as every 60 seconds causes the synoschedtask system application to use large amounts of resources and causes the script to execute slowly
+4. This script can be run through Synology Task Scheduler. However it has been observed that running large scripts like this as frequently as every 60 seconds causes the synoschedtask system application to use large amounts of resources and causes the script to execute slowly
 	
 		details of this issue can be seen here:
 		https://www.reddit.com/r/synology/comments/kv7ufq/high_disk_usage_on_disk_1_caused_by_syno_task/
 	
 		to fix this it is recommend to directly edit the crontab at /etc/crontab ONLY AFTER THE SCRIPT HAS BEEN TESTED AND CONFIRMED TO WORK. updating crontab is also detailed at the end of this readme
 	
-		this can be accomplished using vi /etc/crontab
-	
-		add the following line: 
-		
-		*	*	*	*	*	root	$path_to_file/$filename
 		
 		details on crontab can be found here: https://man7.org/linux/man-pages/man5/crontab.5.html
-6. This project requires a PHP server to be installed and configured to allow the web-administrative page to be available. 
+5. This project requires a PHP server to be installed and configured to allow the web-administrative page to be available. 
 
 
 ### Installation
@@ -396,6 +383,17 @@ next, edit the name of the Synology NAS as reported by the script. the "Server_N
 r[\"nas_name\"] == \"Server2\")
 r[\"nas_name\"] == \"Server_NVR\")
 ```
+
+### Optional Performance Improvement 
+
+
+		NOTE: to reduce disk IOPS activity as the script accesses various temp files every 60 seconds, a RAMDISK may be created for the script to use
+		
+		Create a scheduled task on boot up in Synology Task Scheduler to add the following line
+
+		mount -t tmpfs -o size=1% ramdisk $notification_file_location
+
+		where "$notification_file_location" is the "notification_file_location" created in the beginning of this guide. 
 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
