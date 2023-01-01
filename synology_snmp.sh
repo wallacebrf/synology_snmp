@@ -1,5 +1,5 @@
 #!/bin/bash
-#version 2.5 dated 10/2/2022
+#version 2.6 dated 1/1/2023
 #By Brian Wallace
 
 #based on the script found here by user kernelkaribou
@@ -76,7 +76,7 @@ if [[ $sever_type == 1 ]]; then
 fi
 
 if [[ $sever_type == 2 ]]; then
-	email_logging_file_location="/volume1/web/logging/notifications/logging_variable2.txt"
+	email_logging_file_location="/volume1/web/logging/notifications/logging_variable.txt"
 	lock_file_location="/volume1/web/logging/notifications/synology_snmp.lock"
 	config_file_location="/volume1/web/logging/system_config_NVR2.txt"
 	log_file_location="/volume1/web/logging/notifications"
@@ -84,7 +84,7 @@ if [[ $sever_type == 2 ]]; then
 fi
 
 if [[ $sever_type == 3 ]]; then
-	email_logging_file_location="/volume1/web/logging/notifications/logging_variable2.txt"
+	email_logging_file_location="/volume1/web/logging/notifications/logging_variable.txt"
 	lock_file_location="/volume1/web/logging/notifications/synology_snmp.lock"
 	config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
 	log_file_location="/volume1/web/logging/notifications"
@@ -102,7 +102,10 @@ fi
 function disk_temp_email(){
 	if [ $disk_temp -ge $max_disk_temp ]
 	then
-		if [ ${disk_messge_tracker[$id]} -ge $email_interval ]
+	current_time=$( date +%s )
+	time_diff=$((( $current_time - ${disk_messge_tracker[$id]} ) / 60 ))
+	echo "time_diff is $time_diff minuets"
+		if [ $time_diff -ge $email_interval ]
 		then
 		echo "the email has not been sent in over $email_interval minutes, re-sending email"
 			local mailbody="Warning the temperature of $disk_name on $nas_name has exceeded $max_disk_temp Degrees C / $max_disk_temp_f Degrees F. The current Temperature is $disk_temp"
@@ -115,7 +118,23 @@ function disk_temp_email(){
 			if [[ "$email_response" == "" ]]; then
 				echo "" |& tee -a $log_file_location/disk_email.txt
 				echo "Email Sent Successfully" |& tee -a $log_file_location/disk_email.txt
-				disk_messge_tracker[$id]=0
+				disk_messge_tracker[$id]=$current_time
+				
+				#one of the disk's email notification time stamp has changed, we need to save it to file for later tracking 
+				for (( counter=0; counter<$number_drives_in_system; counter++ ))
+				do
+					if [ $counter -eq 0 ];then
+						echo -n "${disk_messge_tracker[$counter]}" > $email_logging_file_location
+					else
+						echo -n ",${disk_messge_tracker[$counter]}" >> $email_logging_file_location
+					fi
+				done
+				
+				echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
+				
+				if [ $GPU_installed -eq 1 ];then
+					echo -n ",$GPU_message_tracker" >> $email_logging_file_location #write GPU logging variable
+				fi	
 			else
 				echo "Warning, an error occurred while sending the Disk Temperature notification email. the error was: $email_response" |& tee $log_file_location/disk_email.txt
 			fi
@@ -285,9 +304,9 @@ if [ -r "$config_file_location" ]; then
 			fi
 		fi
 		
-		#reading in variables from previous script executions. we track how many script executions have occurred.
-		#This is used to when the last email notification has been sent to control when repeat messages are sent. 
-		#we track this for each installed drive and the CPU individually as each can require email notifications independently. 
+		#reading in variables from previous script executions. we record when notification emails are sent (Linux epoc time stamp)
+		#This is used to control when repeat messages are sent. 
+		#we track this for each installed drive and the CPU/GPU individually as each can require email notifications independently. 
 		
 		if [ -r "$email_logging_file_location" ]; then
 			#file is available and readable 
@@ -333,22 +352,25 @@ if [ -r "$config_file_location" ]; then
 			#file is not available so let's make a new file with default values file
 			echo "$email_logging_file_location is not available, writing default values"
 			#write zeros for all of the installed dries
+			current_time=$( date +%s )
+			echo "current time is $current_time"
 			for (( counter=0; counter<$number_drives_in_system; counter++ ))
 			do
 				if [ $counter -eq 0 ];then
-					echo -n "0" > $email_logging_file_location
+					echo -n "$current_time" > $email_logging_file_location
 				else
-					echo -n ",0" >> $email_logging_file_location
+					echo -n ",$current_time" >> $email_logging_file_location
 				fi
-				disk_messge_tracker+=( 0 );
+				disk_messge_tracker+=( $current_time );
+				echo "disk_messge_tracker[$counter] is equal to ${disk_messge_tracker[$counter]}"
 			done
 			
-			echo -n ",0" >> $email_logging_file_location #write CPU logging variable
-			CPU_message_tracker=0
+			echo -n ",$current_time" >> $email_logging_file_location #write CPU logging variable
+			CPU_message_tracker=$current_time
 			
 			if [ $GPU_installed -eq 1 ];then
-				echo -n ",0" >> $email_logging_file_location #write GPU logging variable
-				GPU_message_tracker=0
+				echo -n ",$current_time" >> $email_logging_file_location #write GPU logging variable
+				GPU_message_tracker=$current_time
 			fi
 			echo "$email_logging_file_location created with default values. Re-run the script. "
 			exit
@@ -503,7 +525,12 @@ if [ -r "$config_file_location" ]; then
 				if [ $system_temp -ge $max_CPU0 ]
 				then
 				#echo the disk temp has been exceeded
-					if [ $CPU_message_tracker -ge $email_interval ]
+				
+					current_time=$( date +%s )
+					time_diff=$((( $current_time - $CPU_message_tracker ) / 60 ))
+					echo "time_diff is $time_diff minuets"
+					
+					if [ $time_diff -ge $email_interval ]
 					then
 					#echo the email has not been sent in over $email_interval minutes, re-sending email
 						if [ $sendmail_installed -eq 1 ];then
@@ -517,7 +544,23 @@ if [ -r "$config_file_location" ]; then
 							if [[ "$email_response" == "" ]]; then
 								echo "" |& tee -a $log_file_location/system_contents.txt
 								echo "Email Sent Successfully" |& tee -a $log_file_location/system_contents.txt
-								CPU_message_tracker=0
+								CPU_message_tracker=$current_time							
+								
+								#the CPU's email notification time stamp has changed, we need to save it to file for later tracking 
+								for (( counter=0; counter<$number_drives_in_system; counter++ ))
+								do
+									if [ $counter -eq 0 ];then
+										echo -n "${disk_messge_tracker[$counter]}" > $email_logging_file_location
+									else
+										echo -n ",${disk_messge_tracker[$counter]}" >> $email_logging_file_location
+									fi
+								done
+								
+								echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
+								
+								if [ $GPU_installed -eq 1 ];then
+									echo -n ",$GPU_message_tracker" >> $email_logging_file_location #write GPU logging variable
+								fi
 							else
 								echo "WARNING - Could not send Email Notification that the system temperature is too high. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/system_contents.txt
 							fi
@@ -1014,7 +1057,11 @@ if [ -r "$config_file_location" ]; then
 						if [ $gpuTemperature -lt $SS_restart_GPU_temp_threshold ]; then
 							echo "Synology Surveillance Station appears to not be utilizing the GPU"
 							
-							if [ $GPU_message_tracker -ge $email_interval ]; then # has it been a certain amount of time since the last email notification?
+							current_time=$( date +%s )
+							time_diff=$((( $current_time - $GPU_message_tracker ) / 60 ))
+							echo "time_diff is $time_diff minuets"
+							
+							if [ $time_diff -ge $email_interval ]; then # has it been a certain amount of time since the last email notification?
 								status=$(/usr/syno/bin/synopkg is_onoff "SurveillanceStation")
 								if [ "$status" = "package SurveillanceStation is turned on" ]; then
 									if [ $enable_SS_restart -eq 1 ]; then
@@ -1039,7 +1086,23 @@ if [ -r "$config_file_location" ]; then
 												if [[ "$email_response" == "" ]]; then
 													echo "" |& tee -a $log_file_location/GPU0_contents.txt
 													echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
-													GPU_message_tracker=0
+													GPU_message_tracker=$current_time
+
+													#the GPU's email notification time stamp has changed, we need to save it to file for later tracking 
+													for (( counter=0; counter<$number_drives_in_system; counter++ ))
+													do
+														if [ $counter -eq 0 ];then
+															echo -n "${disk_messge_tracker[$counter]}" > $email_logging_file_location
+														else
+															echo -n ",${disk_messge_tracker[$counter]}" >> $email_logging_file_location
+														fi
+													done
+													
+													echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
+													
+													if [ $GPU_installed -eq 1 ];then
+														echo -n ",$GPU_message_tracker" >> $email_logging_file_location #write GPU logging variable
+													fi
 												else
 													echo "WARNING - could not send email notification. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
 												fi
@@ -1066,7 +1129,23 @@ if [ -r "$config_file_location" ]; then
 													if [[ "$email_response" == "" ]]; then
 														echo "" |& tee -a $log_file_location/GPU0_contents.txt
 														echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
-														GPU_message_tracker=0
+														GPU_message_tracker=$current_time
+														
+														#the GPU's email notification time stamp has changed, we need to save it to file for later tracking 
+														for (( counter=0; counter<$number_drives_in_system; counter++ ))
+														do
+															if [ $counter -eq 0 ];then
+																echo -n "${disk_messge_tracker[$counter]}" > $email_logging_file_location
+															else
+																echo -n ",${disk_messge_tracker[$counter]}" >> $email_logging_file_location
+															fi
+														done
+														
+														echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
+														
+														if [ $GPU_installed -eq 1 ];then
+															echo -n ",$GPU_message_tracker" >> $email_logging_file_location #write GPU logging variable
+														fi	
 													else
 														echo "WARNING - could not send email notification. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
 													fi
@@ -1083,7 +1162,23 @@ if [ -r "$config_file_location" ]; then
 													if [[ "$email_response" == "" ]]; then
 														echo "" |& tee -a $log_file_location/GPU0_contents.txt
 														echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
-														GPU_message_tracker=0
+														GPU_message_tracker=$current_time
+														
+														#the GPU's email notification time stamp has changed, we need to save it to file for later tracking 
+														for (( counter=0; counter<$number_drives_in_system; counter++ ))
+														do
+															if [ $counter -eq 0 ];then
+																echo -n "${disk_messge_tracker[$counter]}" > $email_logging_file_location
+															else
+																echo -n ",${disk_messge_tracker[$counter]}" >> $email_logging_file_location
+															fi
+														done
+														
+														echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
+														
+														if [ $GPU_installed -eq 1 ];then
+															echo -n ",$GPU_message_tracker" >> $email_logging_file_location #write GPU logging variable
+														fi
 													else
 														echo "WARNING - could not send email notification. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
 													fi
@@ -1103,7 +1198,23 @@ if [ -r "$config_file_location" ]; then
 											if [[ "$email_response" == "" ]]; then
 												echo "" |& tee -a $log_file_location/GPU0_contents.txt
 												echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
-												GPU_message_tracker=0
+												GPU_message_tracker=$current_time
+												
+												#the GPU's email notification time stamp has changed, we need to save it to file for later tracking 
+												for (( counter=0; counter<$number_drives_in_system; counter++ ))
+												do
+													if [ $counter -eq 0 ];then
+														echo -n "${disk_messge_tracker[$counter]}" > $email_logging_file_location
+													else
+														echo -n ",${disk_messge_tracker[$counter]}" >> $email_logging_file_location
+													fi
+												done
+												
+												echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
+												
+												if [ $GPU_installed -eq 1 ];then
+													echo -n ",$GPU_message_tracker" >> $email_logging_file_location #write GPU logging variable
+												fi	
 											else
 												echo "WARNING - could not send email notification about GPU loading. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
 											fi
@@ -1128,7 +1239,12 @@ if [ -r "$config_file_location" ]; then
 						if [ $gpuTemperature -ge $max_GPU ]
 						then
 						#echo the disk temp has been exceeded
-							if [ $GPU_message_tracker -ge $email_interval ]
+						
+							current_time=$( date +%s )
+							time_diff=$((( $current_time - $GPU_message_tracker ) / 60 ))
+							echo "time_diff is $time_diff minuets"
+							
+							if [ $time_diff -ge $email_interval ]
 							then
 							#echo the email has not been sent in over 1 hour, re-sending email
 								mailbody="Warning the temperature of the NVR GPU on $nas_name has exceeded $max_GPU Degrees C / $max_GPU_f Degrees F. The Temperature is currently $gpuTemperature degrees"
@@ -1141,7 +1257,23 @@ if [ -r "$config_file_location" ]; then
 								if [[ "$email_response" == "" ]]; then
 									echo "" |& tee -a $log_file_location/GPU0_contents.txt
 									echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
-									GPU_message_tracker=0
+									GPU_message_tracker=$current_time
+
+									#the GPU's email notification time stamp has changed, we need to save it to file for later tracking 
+									for (( counter=0; counter<$number_drives_in_system; counter++ ))
+									do
+										if [ $counter -eq 0 ];then
+											echo -n "${disk_messge_tracker[$counter]}" > $email_logging_file_location
+									else
+										echo -n ",${disk_messge_tracker[$counter]}" >> $email_logging_file_location
+									fi
+									done
+												
+									echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
+												
+									if [ $GPU_installed -eq 1 ];then
+										echo -n ",$GPU_message_tracker" >> $email_logging_file_location #write GPU logging variable
+									fi
 								else
 									echo "WARNING - could not send email notification that the GPU is overheating. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
 								fi
@@ -1174,29 +1306,6 @@ if [ -r "$config_file_location" ]; then
 			#Sleeping for capture interval unless its last capture then we don't sleep
 			if (( $i < $total_executions)); then
 				sleep $(( $capture_interval - $capture_interval_adjustment))
-			else
-				#increment each disk counter by one to keep track of "minutes elapsed" since this script is expected to execute every minute 
-				#this is used to determine when the last email notification was sent
-				
-				for (( counter=0; counter<$number_drives_in_system; counter++ ))
-				do
-					let disk_messge_tracker[$counter]=disk_messge_tracker[$counter]+1
-					if [ $counter -eq 0 ];then
-						echo -n "${disk_messge_tracker[$counter]}" > $email_logging_file_location
-					else
-						echo -n ",${disk_messge_tracker[$counter]}" >> $email_logging_file_location
-					fi
-				done
-			
-				#increment CPU and GPU counter by one to keep track of "minutes elapsed" since this script is expected to execute every minute 
-				#this is used to determine when the last email notification was sent
-				let CPU_message_tracker=CPU_message_tracker+1
-				echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
-			
-				if [ $GPU_installed -eq 1 ];then
-					let GPU_message_tracker=GPU_message_tracker+1
-					echo -n ",$GPU_message_tracker" >> $email_logging_file_location #write GPU logging variable
-				fi
 			fi
 			
 		done
