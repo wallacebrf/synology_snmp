@@ -81,7 +81,9 @@ The script gathers different SNMP based details from a Synology NAS using SNMP v
 
 9. GPU - If this is a DVA (Deep Video Analysis) system like the DVA3219 or DVA3221: GPU usage, GPU Temperature, GPU Memory Usage, GPU Fan Speed
 
-10. for DVA untis with Graphics Cards, the script can monitor GPU usage and temperature. If the Usage AND Temperature both drop below configurable setpoints then Synology Surveillance will be auto-restarted and an email notification sent. This was added as sometimes the Deep Video Analysis (DVA) processes stop, causing GPU usage and temperature to drop. Restarting the Surveillance station package easilly fixes this issue.  
+10. for DVA untis with Graphics Cards, the script can monitor GPU usage and temperature. If the Usage AND Temperature both drop below configurable set-points then Synology Surveillance will be auto-restarted and an email notification sent. This was added as sometimes the Deep Video Analysis (DVA) processes stop, causing GPU usage and temperature to drop. Restarting the Surveillance station package easilly fixes this issue.  
+
+NOTE: this script can gather two parameters that are NOT AVILABLE through SNMP, those are GPU Temperature and GPU Fan speed. This script collects it from the ```nvidia-smi``` driver commands. 
 
 Some items like system, GPU, CPU, and disk temperatures can send alert email notifications based on configurable set-points. 
 
@@ -99,7 +101,7 @@ This project is written around a Synology NAS and their DSM specific SNMP OIDs a
 1. this script is designed to be executed every 60 seconds
 2. this script requires the installation of Synology MailPlus server package in package center in order to send emails. If it is not installed, the script will still work it just will not be able to send emails. 
 
-the mail plus server must be properly configured to relay received messages to another email account. 
+the mail plus server must be properly configured to relay received messages to another email account. NOTE: this read-me DOES NOT explain how to properly configure mail plus server. 
 
 3. this script only supports SNMP V3. This is because lower versions are less secure 
 	
@@ -115,12 +117,12 @@ the mail plus server must be properly configured to relay received messages to a
 	
 		
 		details on crontab can be found here: https://man7.org/linux/man-pages/man5/crontab.5.html
-5. This project requires a PHP server to be installed and configured to allow the web-administrative page to be available. 
+5. This project requires a PHP server to be installed and configured to allow the web-administrative page to be available. This read-me does explain how to configure the needed read/write permissions, but does not otherwise explain how to setup a website on a Synology NAS through web-station
 
 
 ### Installation
 
-Note: this assumes InfluxDB version 2 and Grafana are already installed and properly configured.
+Note: this assumes InfluxDB version 2 and Grafana are already installed and properly configured. This read-me does NOT explain how to install and configure InfluxDB nor Grafana. 
 
 1. Create the following directories on the NAS
 
@@ -147,17 +149,17 @@ note: ```%PHP_Server_Root%``` is what ever shared folder location the PHP web se
 ### Configuration "synology_snmp.sh"
 
 1. Open the ```synology_snmp.sh``` file in a text editor. 
-2. the script contains the following configuration variables
+2. the script contains the following configuration variables that will need to be un-commented
 ```
-email_logging_file_location="/volume1/web/logging/notifications/logging_variable2.txt"
-lock_file_location="/volume1/web/logging/notifications/synology_snmp2.lock"
-config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
+email_last_sent="/volume1/web/logging/notifications/synology_snmp_last_email_sent.txt"
+lock_file_location="/volume1/web/logging/notifications/synology_snmp.lock"
+config_file_location="/volume1/web/config/config_files/config_files_local/system_config.txt"
 log_file_location="/volume1/web/logging/notifications"
 ```
 
 for the variables above, ensure the "/volume1/web" is the correct location for the root of the PHP web server, correct as required
 
-3. delete the lines between ```#for my personal use as i have multiple Synology systems, these lines can be deleted by other users``` and ```#Script Start``` as those are for my personal use as i use this script for several units that have slightly different configurations	
+3. delete the lines 98 through 127 which is between ```#for my personal use as i have multiple Synology systems, these lines can be deleted by other users``` and ```EMAIL SETTINGS USED IF CONFIGURATION FILE IS UNAVAIL``` as those are for my personal use as i use this script for several units that have slightly different configurations	
 
 4. find the lines
 ```
@@ -316,19 +318,19 @@ NOTE: if this is a regular Synology NAS and not a DVA unit like the DVA3219, DVA
 these values increment during executions to allow the script to track the amount of time that has passed since an email notification was last sent. 
 
 ```
-disk_messge_tracker id 0 is equal to: 0
-disk_messge_tracker id 1 is equal to: 0
-disk_messge_tracker id 2 is equal to: 0
-disk_messge_tracker id 3 is equal to: 0
-disk_messge_tracker id 4 is equal to: 0
-disk_messge_tracker id 5 is equal to: 0
-disk_messge_tracker id 6 is equal to: 0
-disk_messge_tracker id 7 is equal to: 0
-disk_messge_tracker id 8 is equal to: 0
-disk_messge_tracker id 9 is equal to: 0
-disk_messge_tracker id 10 is equal to: 0
-disk_messge_tracker id 11 is equal to: 0
-CPU_message_tracker is equal to 0
+disk_messge_tracker id 0 is equal to: 1674939601
+disk_messge_tracker id 1 is equal to: 1674939601
+disk_messge_tracker id 2 is equal to: 1674939601
+disk_messge_tracker id 3 is equal to: 1674939601
+disk_messge_tracker id 4 is equal to: 1674939601
+disk_messge_tracker id 5 is equal to: 1674939601
+disk_messge_tracker id 6 is equal to: 1674939601
+disk_messge_tracker id 7 is equal to: 1674939601
+disk_messge_tracker id 8 is equal to: 1674939601
+disk_messge_tracker id 9 is equal to: 1674939601
+disk_messge_tracker id 10 is equal to: 1674939601
+disk_messge_tracker id 11 is equal to: 1674939601
+CPU_message_tracker is equal to 1674939601
 ```
 6. at the end of the script, it will output the results from InfluxDB. ensure you do NOT see any instances of the following
 
