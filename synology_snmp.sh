@@ -1,5 +1,5 @@
 #!/bin/bash
-#version 2.6 dated 1/1/2023
+#version 2.7 dated 1/18/2023
 #By Brian Wallace
 
 #based on the script found here by user kernelkaribou
@@ -17,9 +17,9 @@
 #Dependencies:
 #***************************************************
 #1.) this script is designed to be executed every 60 seconds. It has a configurable parameter "capture_interval" that allows the script to loop 6x, 4x, 2x, or 1x time(s) every 60 seconds. 
-#2.) this script requires the installation of synology MailPlus server package in package center in order to send emails. 
+#2.) this script requires the installation of Synology MailPlus server package in package center in order to send emails. 
 	#the mail plus server must be properly configured to relay received messages to another email account. 
-	#this is required as the "sendmail" command is not installed by default on synology DSM but is installed with Mail Plus Server
+	#this is required as the "sendmail" command is not installed by default on Synology DSM but is installed with Mail Plus Server
 #3.) RAMDISK
 	#NOTE: to reduce disk IOPS activity, it is recommended to create a RAMDISK for the temp files this script uses
 	#to do so, create a scheduled task on boot up in Synology Task Scheduler to add the following line
@@ -31,7 +31,7 @@
 #4.) this script only supports SNMP V3. This is because lower versions are less secure 
 	#SNMP must be enabled on the host NAS for the script to gather the NAS NAME
 	#the snmp settings for the NAS can all be entered into the web administration page
-#5.) This script can be run through synology Task Scheduler. However it has been observed that running large scripts like this as frequently as every 60 seconds causes the synoschedtask system application to use large amounts of resources and causes the script to execute slowly
+#5.) This script can be run through Synology Task Scheduler. However it has been observed that running large scripts like this as frequently as every 60 seconds causes the synoschedtask system application to use large amounts of resources and causes the script to execute slowly
 	#details of this issue can be seen here:
 	#https://www.reddit.com/r/synology/comments/kv7ufq/high_disk_usage_on_disk_1_caused_by_syno_task/
 	#to fix this it is recommend to directly edit the crontab at /etc/crontab
@@ -45,16 +45,48 @@
 #7.) this script only supports DSM versions 6 and 7. 
 
 
+
+#############################################
+#VERIFICATIONS
+#############################################
+#1.) data is collected into influx properly.........................................................................  VERIFIED 1/18/2023
+#2.) SNMP errors:
+	#a.) bad SNMP username causes script to shutdown with email.....................................................  VERIFIED 1/18/2023 
+	#b.) bad SNMP authpass causes script to shutdown with email.....................................................  VERIFIED 1/18/2023
+	#c.) bad SNMP privacy pass causes script to shutdown with email.................................................  VERIFIED 1/18/2023
+	#d.) bad SNMP ip address causes script to shutdown with email...................................................  VERIFIED 1/18/2023
+	#e.) bad SNMP port causes script to shutdown with email.........................................................  VERIFIED 1/18/2023
+	#f.) error emails a through e above only are sent within the allowed time interval..............................  VERIFIED 1/18/2023
+#3.) verify that when "sendmail" is unavailable, emails are not sent, and the appropriate warnings are displayed....  VERIFIED 1/18/2023
+#4.) verify script behavior when config file is unavailable.........................................................  VERIFIED 1/18/2023
+#5.) verify script behavior when config file has wrong number of arguments..........................................  VERIFIED 1/18/2023
+#6.) verify script behavior when the target device is not available / responding to pings...........................  VERIFIED 1/18/2023
+#7.) verify disk temp emails are sent if disks are too hot..........................................................  VERIFIED 1/18/2023
+#8.) verify cpu temp emails are sent if CPU is too hot..............................................................  VERIFIED 1/18/2023
+#9.) verify GPU temp emails are sent if GPU is too hot..............................................................  VERIFIED 1/18/2023
+#10) error emails for #7 through #9 above only are sent within the allowed time interval............................  VERIFIED 1/18/2023
+#11.verify SS commanded to shutdown when utilization and temp are too low for 15 minutes............................  VERIFIED 1/18/2023
+#12.verify after GPU utilization and temperature are normal the email tracking file is deleted......................  VERIFIED 1/18/2023
+#13.verify behavior when SS is successfully shutdown................................................................  VERIFIED 1/18/2023
+#14.verify behavior when SS fails to shutdown.......................................................................  VERIFIED 1/18/2023
+#15.verify behavior when SS is successfully restarts................................................................  VERIFIED 1/18/2023
+#16.verify behavior when SS fails to restart........................................................................  VERIFIED 1/18/2023
+#17.verify behavior when SS auto restart is NOT enabled.............................................................  VERIFIED 1/18/2023
+
+
+
+
 #########################################
 #variable initialization
 #########################################
-#email_logging_file_location="/volume1/web/logging/notifications/logging_variable2.txt"
-#lock_file_location="/volume1/web/logging/notifications/synology_snmp2.lock"
-#config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
+#email_last_sent="/volume1/web/logging/notifications/synology_snmp_last_email_sent.txt"
+#lock_file_location="/volume1/web/logging/notifications/synology_snmp.lock"
+#config_file_location="/volume1/web/config/config_files/config_files_local/system_config.txt"
 #log_file_location="/volume1/web/logging/notifications"
 debug=0
 disk_messge_tracker=();
 MinDSMVersion=7.0
+SS_restart_delay_minuets=15 #how long to wait in minutes before restarting SurveillanceStation if GPU load is low
 
 #depending on the number of drives, if the system has SSD's or regular HDD disks, the time required to execute the entire script takes time and may not be the same on all systems.
 #this value can be adjusted to ensure the script executes all of its capture intervals within 60 seconds. 
@@ -63,33 +95,44 @@ MinDSMVersion=7.0
 
 
 
-#for my personal use as i have multiple synology systems, these lines can be deleted by other users and the 4x lines above can be un-commented. Also un-comment the capture_interval_adjustment variable above
+#for my personal use as i have multiple Synology systems, these lines can be deleted by other users and the 4x lines above can be un-commented. Also un-comment the capture_interval_adjustment variable above
 ######################################################################################
-sever_type=3 #1=server2, 2=serverNVR, 3=serverplex
+sever_type=1 #1=server2, 2=serverNVR, 3=serverplex
 
 if [[ $sever_type == 1 ]]; then
-	email_logging_file_location="/volume1/web/logging/notifications/logging_variable2.txt"
+	email_last_sent="/volume1/web/logging/notifications/synology_snmp_last_email_sent.txt"
 	lock_file_location="/volume1/web/logging/notifications/synology_snmp.lock"
 	config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
 	log_file_location="/volume1/web/logging/notifications"
+	SS_Station_restart_tracking="/volume1/web/logging/notifications/SS_Station_restart_tracking.txt"
 	capture_interval_adjustment=6
 fi
 
 if [[ $sever_type == 2 ]]; then
-	email_logging_file_location="/volume1/web/logging/notifications/logging_variable.txt"
+	email_last_sent="/volume1/web/logging/notifications/synology_snmp_last_email_sent.txt"
 	lock_file_location="/volume1/web/logging/notifications/synology_snmp.lock"
 	config_file_location="/volume1/web/logging/system_config_NVR2.txt"
 	log_file_location="/volume1/web/logging/notifications"
+	SS_Station_restart_tracking="/volume1/web/logging/notifications/SS_Station_restart_tracking.txt"
 	capture_interval_adjustment=8
 fi
 
 if [[ $sever_type == 3 ]]; then
-	email_logging_file_location="/volume1/web/logging/notifications/logging_variable.txt"
+	email_last_sent="/volume1/web/logging/notifications/synology_snmp_last_email_sent.txt"
 	lock_file_location="/volume1/web/logging/notifications/synology_snmp.lock"
 	config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
 	log_file_location="/volume1/web/logging/notifications"
+	SS_Station_restart_tracking="/volume1/web/logging/notifications/SS_Station_restart_tracking.txt"
 	capture_interval_adjustment=3
 fi
+
+#########################################################
+#EMAIL SETTINGS USED IF CONFIGURATION FILE IS UNAVAILABLE
+#These variables will be overwritten with new corrected data if the configuration file loads properly. 
+email_address="wallacebrf@hotmail.com"
+from_email_address="admin@wallacebrf.us"
+#########################################################
+
 
 ######################################################################################
 
@@ -100,15 +143,16 @@ fi
 
 #this function is used to send notification emails if any of the installed disk drive's temperatures are above the setting controlled in the web-interface
 function disk_temp_email(){
-	if [ $disk_temp -ge $max_disk_temp ]
-	then
-	current_time=$( date +%s )
-	time_diff=$((( $current_time - ${disk_messge_tracker[$id]} ) / 60 ))
-	echo "time_diff is $time_diff minuets"
-		if [ $time_diff -ge $email_interval ]
-		then
-		echo "the email has not been sent in over $email_interval minutes, re-sending email"
-			local mailbody="Warning the temperature of $disk_name on $nas_name has exceeded $max_disk_temp Degrees C / $max_disk_temp_f Degrees F. The current Temperature is $disk_temp"
+	if [ $disk_temp -ge $max_disk_temp ]; then
+		#calculate how long ago the last email sent
+		current_time=$( date +%s )
+		time_diff=$((( $current_time - ${disk_messge_tracker[$id]} ) / 60 ))
+		echo "time_diff is $time_diff minuets"
+		
+		if [ $time_diff -ge $email_interval ]; then
+			local now=$(date +"%T")
+			echo "the email has not been sent in over $email_interval minutes, re-sending email"
+			local mailbody="$now - Warning the temperature of $disk_name on $nas_name has exceeded $max_disk_temp Degrees C / $max_disk_temp_f Degrees F. The current Temperature is $disk_temp"
 			echo "from: $from_email_address " > $log_file_location/disk_email.txt
 			echo "to: $email_address " >> $log_file_location/disk_email.txt
 			echo "subject: $disk_name Temperature Warning on $nas_name" >> $log_file_location/disk_email.txt
@@ -119,27 +163,74 @@ function disk_temp_email(){
 				echo "" |& tee -a $log_file_location/disk_email.txt
 				echo "Email Sent Successfully" |& tee -a $log_file_location/disk_email.txt
 				disk_messge_tracker[$id]=$current_time
+				time_diff=0
 				
 				#one of the disk's email notification time stamp has changed, we need to save it to file for later tracking 
 				for (( counter=0; counter<$number_drives_in_system; counter++ ))
 				do
 					if [ $counter -eq 0 ];then
-						echo -n "${disk_messge_tracker[$counter]}" > $email_logging_file_location
+						echo -n "${disk_messge_tracker[$counter]}" > $email_last_sent
 					else
-						echo -n ",${disk_messge_tracker[$counter]}" >> $email_logging_file_location
+						echo -n ",${disk_messge_tracker[$counter]}" >> $email_last_sent
 					fi
 				done
 				
-				echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
+				echo -n ",$CPU_message_tracker" >> $email_last_sent #write CPU logging variable
 				
 				if [ $GPU_installed -eq 1 ];then
-					echo -n ",$GPU_message_tracker" >> $email_logging_file_location #write GPU logging variable
+					echo -n ",$GPU_message_tracker" >> $email_last_sent #write GPU logging variable
 				fi	
 			else
 				echo "Warning, an error occurred while sending the Disk Temperature notification email. the error was: $email_response" |& tee $log_file_location/disk_email.txt
 			fi
+		else
+			echo "Only $time_diff minuets have passed since the last notification that $disk_name on $nas_name has exceeded $max_disk_temp Degrees C / $max_disk_temp_f Degrees F. The current Temperature is $disk_temp. Email will be sent every $email_interval minutes. $(( $email_interval - $time_diff )) Minutes Remaining Until Next Email"
 		fi
 	fi
+}
+
+
+#this function is used to send notification if the SNMP data collection fails
+function snmp_fail_email(){
+	current_time=$( date +%s )
+	time_diff=$((( $current_time - $CPU_message_tracker ) / 60 ))
+	if [ $time_diff -ge $email_interval ]; then
+		local now=$(date +"%T")
+		echo "the email has not been sent in over $email_interval minutes, re-sending email"
+		local mailbody="$now - ALERT NAS at IP $nas_url named \"$nas_name\" appears to have an issue with SNMP as it returned invalid data. Script \"${0##*/}\" failed"
+		echo "from: $from_email_address " > $log_file_location/system_contents.txt
+		echo "to: $email_address " >> $log_file_location/disk_email.txt
+		echo "subject: $nas_name SNMP Data Collection failed" >> $log_file_location/system_contents.txt
+		echo "" >> $log_file_location/system_contents.txt
+		echo $mailbody >> $log_file_location/system_contents.txt
+		local email_response=$(sendmail -t < $log_file_location/system_contents.txt  2>&1)
+		if [[ "$email_response" == "" ]]; then
+			echo "" |& tee -a $log_file_location/system_contents.txt
+			echo "Email Sent Successfully" |& tee -a $log_file_location/system_contents.txt
+			CPU_message_tracker=$current_time
+			time_diff=0
+			#one of the disk's email notification time stamp has changed, we need to save it to file for later tracking 
+			for (( counter=0; counter<$number_drives_in_system; counter++ ))
+			do
+				if [ $counter -eq 0 ];then
+					echo -n "${disk_messge_tracker[$counter]}" > $email_last_sent
+			else
+					echo -n ",${disk_messge_tracker[$counter]}" >> $email_last_sent
+				fi
+			done
+			
+			echo -n ",$CPU_message_tracker" >> $email_last_sent #write CPU logging variable
+			
+			if [ $GPU_installed -eq 1 ];then
+				echo -n ",$GPU_message_tracker" >> $email_last_sent #write GPU logging variable
+			fi	
+		else
+			echo "Warning, an error occurred while sending the Disk Temperature notification email. the error was: $email_response" |& tee $log_file_location/system_contents.txt
+		fi
+	else
+		echo "Only $time_diff minuets have passed since the last notification, email will be sent every $email_interval minutes. $(( $email_interval - $time_diff )) Minutes Remaining Until Next Email"
+	fi
+	exit 1
 }
 
 #create a lock file in the ramdisk directory to prevent more than one instance of this script from executing at once
@@ -148,6 +239,25 @@ if ! mkdir $lock_file_location; then
 	exit 1
 fi
 trap 'rm -rf $lock_file_location' EXIT #remove the lockdir on exit
+
+#verify MailPlus Server package is installed and running as the "sendmail" command is not installed in Synology by default. the MailPlus Server package is required
+install_check=$(/usr/syno/bin/synopkg list | grep MailPlus-Server)
+if [ "$install_check" = "" ];then
+	echo "WARNING!  ----   MailPlus Server NOT is installed, cannot send email notifications"
+	sendmail_installed=0
+else
+	#"MailPlus Server is installed, verify it is running and not stopped"
+	status=$(/usr/syno/bin/synopkg is_onoff "MailPlus-Server")
+	if [ "$status" = "package MailPlus-Server is turned on" ]; then
+		sendmail_installed=1
+		if [ $debug -eq 1 ];then
+			echo "MailPlus Server is installed and running"
+		fi
+	else
+		sendmail_installed=0
+		echo "WARNING!  ----   MailPlus Server NOT is running, cannot send email notifications"
+	fi
+fi
 
 
 #reading in variables from configuration file. this configuration file is edited using a web administration page. or the file can be edited directly. 
@@ -246,18 +356,18 @@ if [ -r "$config_file_location" ]; then
 
 	if [ $script_enable -eq 1 ]
 	then
-		#confirm that the synology SNMP settings were configured otherwise exit script
+		#confirm that the Synology SNMP settings were configured otherwise exit script
 		if [ "$nas_snmp_user" = "" ];then
 			echo "Synology NAS Username is BLANK, please configure the SNMP settings"
-			exit 1
+			snmp_fail_email
 		else
 			if [ "$snmp_authPass1" = "" ];then
 				echo "Synology NAS Authentication Password is BLANK, please configure the SNMP settings"
-				exit 1
+				snmp_fail_email
 			else
 				if [ "$snmp_privPass2" = "" ];then
 					echo "Synology NAS Privacy Password is BLANK, please configure the SNMP settings"
-					exit 1
+					snmp_fail_email
 				else
 					if [ $debug -eq 1 ];then
 						echo "Synology SNMP settings are not Blank"
@@ -265,28 +375,8 @@ if [ -r "$config_file_location" ]; then
 				fi
 			fi
 		fi
-			
-		#verify MailPlus Server package is installed and running as the "sendmail" command is not installed in synology by default. the MailPlus Server package is required
-		install_check=$(/usr/syno/bin/synopkg list | grep MailPlus-Server)
-
-		if [ "$install_check" = "" ];then
-			echo "WARNING!  ----   MailPlus Server NOT is installed, cannot send email notifications"
-			sendmail_installed=0
-		else
-			#"MailPlus Server is installed, verify it is running and not stopped"
-			status=$(/usr/syno/bin/synopkg is_onoff "MailPlus-Server")
-			if [ "$status" = "package MailPlus-Server is turned on" ]; then
-				sendmail_installed=1
-				if [ $debug -eq 1 ];then
-					echo "MailPlus Server is installed and running"
-				fi
-			else
-				sendmail_installed=0
-				echo "WARNING!  ----   MailPlus Server NOT is running, cannot send email notifications"
-			fi
-		fi
 		
-		#confirm that the synology NVidia drivers are actually installed. If they are not installed, set the correct flag
+		#confirm that the Synology NVidia drivers are actually installed. If they are not installed, set the correct flag
 		if ! command -v nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader &> /dev/null
 		then
 			capture_GPU=0
@@ -308,15 +398,15 @@ if [ -r "$config_file_location" ]; then
 		#This is used to control when repeat messages are sent. 
 		#we track this for each installed drive and the CPU/GPU individually as each can require email notifications independently. 
 		
-		if [ -r "$email_logging_file_location" ]; then
+		if [ -r "$email_last_sent" ]; then
 			#file is available and readable 
-			read input_read < $email_logging_file_location #determine how many minutes it has been since the last email has been sent
+			read input_read < $email_last_sent #determine how many minutes it has been since the last email has been sent
 			explode=(`echo $input_read | sed 's/,/\n/g'`)
 			
 			for (( counter=0; counter<$number_drives_in_system; counter++ ))
 			do
 				if [ "${explode[$counter]}" = "" ]; then
-					echo "reading previous drive email tracking data failed, exiting script, suggest deleting file \"$email_logging_file_location\" and running script again to re-create file"
+					echo "reading previous drive email tracking data failed, exiting script, suggest deleting file \"$email_last_sent\" and running script again to re-create file"
 					exit 1
 				else
 					disk_messge_tracker+=( ${explode[$counter]} );
@@ -327,7 +417,7 @@ if [ -r "$config_file_location" ]; then
 			done
 
 			if [ "${explode[$counter]}" = "" ]; then
-				echo "reading previous CPU email tracking data failed, exiting script, suggest deleting file \"$email_logging_file_location\" and running script again to re-create file"
+				echo "reading previous CPU email tracking data failed, exiting script, suggest deleting file \"$email_last_sent\" and running script again to re-create file"
 				exit 1
 			else
 				CPU_message_tracker=${explode[$counter]}
@@ -338,7 +428,7 @@ if [ -r "$config_file_location" ]; then
 			let counter=counter+1
 			if [ $GPU_installed -eq 1 ];then
 				if [ "${explode[$counter]}" = "" ]; then
-					echo "reading previous GPU email tracking data failed, exiting script, suggest deleting file \"$email_logging_file_location\" and running script again to re-create file"
+					echo "reading previous GPU email tracking data failed, exiting script, suggest deleting file \"$email_last_sent\" and running script again to re-create file"
 					exit 1
 				else
 					GPU_message_tracker=${explode[$counter]}
@@ -350,29 +440,29 @@ if [ -r "$config_file_location" ]; then
 			
 		else
 			#file is not available so let's make a new file with default values file
-			echo "$email_logging_file_location is not available, writing default values"
+			echo "$email_last_sent is not available, writing default values"
 			#write zeros for all of the installed dries
 			current_time=$( date +%s )
 			echo "current time is $current_time"
 			for (( counter=0; counter<$number_drives_in_system; counter++ ))
 			do
 				if [ $counter -eq 0 ];then
-					echo -n "$current_time" > $email_logging_file_location
+					echo -n "$current_time" > $email_last_sent
 				else
-					echo -n ",$current_time" >> $email_logging_file_location
+					echo -n ",$current_time" >> $email_last_sent
 				fi
 				disk_messge_tracker+=( $current_time );
 				echo "disk_messge_tracker[$counter] is equal to ${disk_messge_tracker[$counter]}"
 			done
 			
-			echo -n ",$current_time" >> $email_logging_file_location #write CPU logging variable
+			echo -n ",$current_time" >> $email_last_sent #write CPU logging variable
 			CPU_message_tracker=$current_time
 			
 			if [ $GPU_installed -eq 1 ];then
-				echo -n ",$current_time" >> $email_logging_file_location #write GPU logging variable
+				echo -n ",$current_time" >> $email_last_sent #write GPU logging variable
 				GPU_message_tracker=$current_time
 			fi
-			echo "$email_logging_file_location created with default values. Re-run the script. "
+			echo "$email_last_sent created with default values. Re-run the script. "
 			exit
 		fi
 		
@@ -382,11 +472,11 @@ if [ -r "$config_file_location" ]; then
 		# Getting NAS hostname from NAS, and capturing error output in the event we get an error during the SNMP_walk
 		nas_name=$(snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 SNMPv2-MIB::sysName.0 -Ovqt 2>&1)
 
-		#since $nas_name is the first time we have performed a SNMP request, let's make sure we did not receive any errors that could be caused by things like bad passwords, bad username, incorrect auth or privacy types etc
+		#since $nas_name is the first time we have performed a SNMP request, let's make sure we did not receive any errors that could be caused by things like bad passwords, bad user name, incorrect auth or privacy types etc
 		#if we receive an error now, then something is wrong with the SNMP settings and this script will not be able to function so we should exit out of it. 
 		#the five main error are
 		#1 - too short of a password
-			#Error: passphrase chosen is below the length requirements of the USM (min=8).
+			#Error: pass phrase chosen is below the length requirements of the USM (min=8).
 			#snmpwalk:  (The supplied password length is too short.)
 			#Error generating a key (Ku) from the supplied privacy pass phrase.
 
@@ -405,28 +495,34 @@ if [ -r "$config_file_location" ]; then
 		
 		if [[ "$nas_name" == "Error:"* ]]; then #will search for the first error type
 			echo "warning, the SNMP Auth password and or the Privacy password supplied is below the minimum 8 characters required. Exiting Script"
-			exit 1
+			snmp_fail_email
 		fi
 		
 		if [[ "$nas_name" == "Timeout:"* ]]; then #will search for the second error type
 			echo "The SNMP target did not respond. This could be the result of a bad SNMP privacy password, the wrong IP address, the wrong port, or SNMP services not being enabled on the target device"
 			echo "Exiting Script"
-			exit 1
+			snmp_fail_email
 		fi
 		
 		if [[ "$nas_name" == "snmpwalk: Unknown user name"* ]]; then #will search for the third error type
 			echo "warning, The supplied username is incorrect. Exiting Script"
-			exit 1
+			snmp_fail_email
 		fi
 		
 		if [[ "$nas_name" == "snmpwalk: Authentication failure (incorrect password, community or key)"* ]]; then #will search for the fourth error type
 			echo "The Authentication protocol or password is incorrect. Exiting Script"
-			exit 1
+			snmp_fail_email
 		fi
 		
 		if [[ "$nas_name" == "" ]]; then #will search for the fifth error type
 			echo "Something is wrong with the SNMP settings, the results returned a blank/empty value. Exiting Script"
-			exit 1
+			snmp_fail_email
+		fi
+
+		if [[ "$nas_name" == "snmpwalk: Timeout" ]]; then #will search for the fifth error type
+			echo "The SNMP target did not respond. This could be the result of a bad SNMP privacy password, the wrong IP address, the wrong port, or SNMP services not being enabled on the target device"
+			echo "Exiting Script"
+			snmp_fail_email
 		fi
 
 		if [ ! $capture_interval -eq 10 ]; then
@@ -488,7 +584,7 @@ if [ -r "$config_file_location" ]; then
 					fi
 				done < <(snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 1.3.6.1.4.1.6574.1.5) #Parent OID for SYNOLOGY-SYSTEM-MIB
 				
-				# synology NAS Temperature
+				# Synology NAS Temperature
 				system_temp=`snmpwalk -v3 -l authPriv -u $nas_snmp_user -a $snmp_auth_protocol -A $snmp_authPass1 -x $snmp_privacy_protocol -X $snmp_privPass2 $nas_url:161 1.3.6.1.4.1.6574.1.2 -Oqv`
 				
 				#System details to post
@@ -522,19 +618,18 @@ if [ -r "$config_file_location" ]; then
 		"
 				done
 				
-				if [ $system_temp -ge $max_CPU0 ]
-				then
+				if [ $system_temp -ge $max_CPU0 ]; then
 				#echo the disk temp has been exceeded
 				
 					current_time=$( date +%s )
 					time_diff=$((( $current_time - $CPU_message_tracker ) / 60 ))
 					echo "time_diff is $time_diff minuets"
 					
-					if [ $time_diff -ge $email_interval ]
-					then
+					if [ $time_diff -ge $email_interval ]; then
 					#echo the email has not been sent in over $email_interval minutes, re-sending email
 						if [ $sendmail_installed -eq 1 ];then
-							mailbody="Warning the temperature ($system_temp C) of the system CPU on $nas_name has exceeded $max_CPU0 Degrees C / $max_CPU0_f Degrees F. The Temperature is currently $system_temp degrees"
+							now=$(date +"%T")
+							mailbody="$now - Warning the temperature ($system_temp C) of the system CPU on $nas_name has exceeded $max_CPU0 Degrees C / $max_CPU0_f Degrees F. The Temperature is currently $system_temp degrees"
 							echo "from: $from_email_address " > $log_file_location/system_contents.txt
 							echo "to: $email_address " >> $log_file_location/system_contents.txt
 							echo "subject: $nas_name CPU Temperature Warning " >> $log_file_location/system_contents.txt
@@ -544,22 +639,23 @@ if [ -r "$config_file_location" ]; then
 							if [[ "$email_response" == "" ]]; then
 								echo "" |& tee -a $log_file_location/system_contents.txt
 								echo "Email Sent Successfully" |& tee -a $log_file_location/system_contents.txt
-								CPU_message_tracker=$current_time							
+								CPU_message_tracker=$current_time
+								time_diff=0
 								
 								#the CPU's email notification time stamp has changed, we need to save it to file for later tracking 
 								for (( counter=0; counter<$number_drives_in_system; counter++ ))
 								do
 									if [ $counter -eq 0 ];then
-										echo -n "${disk_messge_tracker[$counter]}" > $email_logging_file_location
+										echo -n "${disk_messge_tracker[$counter]}" > $email_last_sent
 									else
-										echo -n ",${disk_messge_tracker[$counter]}" >> $email_logging_file_location
+										echo -n ",${disk_messge_tracker[$counter]}" >> $email_last_sent
 									fi
 								done
 								
-								echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
+								echo -n ",$CPU_message_tracker" >> $email_last_sent #write CPU logging variable
 								
 								if [ $GPU_installed -eq 1 ];then
-									echo -n ",$GPU_message_tracker" >> $email_logging_file_location #write GPU logging variable
+									echo -n ",$GPU_message_tracker" >> $email_last_sent #write GPU logging variable
 								fi
 							else
 								echo "WARNING - Could not send Email Notification that the system temperature is too high. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/system_contents.txt
@@ -567,6 +663,8 @@ if [ -r "$config_file_location" ]; then
 						else
 							echo "WARNING - Could not send Email Notification that the system temperature is too high. The temperature ($system_temp C) of the system CPU on $nas_name has exceeded $max_CPU0 Degrees C / $max_CPU0_f Degrees F"
 						fi
+					else
+						echo "Only $time_diff minuets have passed since the last notification for system CPU on $nas_name has exceeded $max_CPU0 Degrees C / $max_CPU0_f Degrees F. The Temperature is currently $system_temp degrees, email will be sent every $email_interval minutes. $(( $email_interval - $time_diff )) Minutes Remaining Until Next Email"
 					fi
 				fi
 			else
@@ -1057,11 +1155,17 @@ if [ -r "$config_file_location" ]; then
 						if [ $gpuTemperature -lt $SS_restart_GPU_temp_threshold ]; then
 							echo "Synology Surveillance Station appears to not be utilizing the GPU"
 							
+							#track how long the GPU has been running at low usage and if it stays this way for too long ($SS_restart_delay_minuets minutes), only then restart SS
 							current_time=$( date +%s )
-							time_diff=$((( $current_time - $GPU_message_tracker ) / 60 ))
-							echo "time_diff is $time_diff minuets"
+							if [ -r "$SS_Station_restart_tracking" ]; then
+								read email_time < $SS_Station_restart_tracking
+								time_diff=$((( $current_time - $email_time ) / 60 ))
+							else 
+								echo "$current_time" > $SS_Station_restart_tracking
+								time_diff=0
+							fi
 							
-							if [ $time_diff -ge $email_interval ]; then # has it been a certain amount of time since the last email notification?
+							if [ $time_diff -ge $SS_restart_delay_minuets ]; then # has it been more than $SS_restart_delay_minuets minutes where the GPU usage is low?
 								status=$(/usr/syno/bin/synopkg is_onoff "SurveillanceStation")
 								if [ "$status" = "package SurveillanceStation is turned on" ]; then
 									if [ $enable_SS_restart -eq 1 ]; then
@@ -1073,10 +1177,16 @@ if [ -r "$config_file_location" ]; then
 											/usr/syno/bin/synopkg stop "SurveillanceStation"
 										fi
 										sleep 1
+										
+										#confirm that the package was actually stopped 
 										status=$(/usr/syno/bin/synopkg is_onoff "SurveillanceStation")
 										if [ "$status" = "package SurveillanceStation is turned on" ]; then
+											echo -e "\n\nSynology Surveillance Station FAILED to shutdown shutdown\n\n"
+											echo "$current_time" > $SS_Station_restart_tracking
+											time_diff=0
 											if [ $sendmail_installed -eq 1 ]; then
-												mailbody="ALERT! - Synology Surveillance Station Appeared to no longer be utilizing the GPU. Automatic restart of Synology Surveillance Station was enabled and was unable to shutdown Surveillance Station. "
+												now=$(date +"%T")
+												mailbody="$now - ALERT! - Synology Surveillance Station Appeared to no longer be utilizing the GPU. Automatic restart of Synology Surveillance Station was enabled and was unable to shutdown Surveillance Station. "
 												echo "from: $from_email_address " > $log_file_location/GPU0_contents.txt
 												echo "to: $email_address " >> $log_file_location/GPU0_contents.txt
 												echo "subject: $nas_name Synology Surveillance Station Low GPU Usage - Synology Surveillance Station Shutdown FAILED" >> $log_file_location/GPU0_contents.txt
@@ -1086,29 +1196,14 @@ if [ -r "$config_file_location" ]; then
 												if [[ "$email_response" == "" ]]; then
 													echo "" |& tee -a $log_file_location/GPU0_contents.txt
 													echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
-													GPU_message_tracker=$current_time
-
-													#the GPU's email notification time stamp has changed, we need to save it to file for later tracking 
-													for (( counter=0; counter<$number_drives_in_system; counter++ ))
-													do
-														if [ $counter -eq 0 ];then
-															echo -n "${disk_messge_tracker[$counter]}" > $email_logging_file_location
-														else
-															echo -n ",${disk_messge_tracker[$counter]}" >> $email_logging_file_location
-														fi
-													done
-													
-													echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
-													
-													if [ $GPU_installed -eq 1 ];then
-														echo -n ",$GPU_message_tracker" >> $email_logging_file_location #write GPU logging variable
-													fi
 												else
 													echo "WARNING - could not send email notification. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
 												fi
+											else
+												echo -e "\n\nERROR -- Could not send alert email -- command \"sendmail\" is not available\n\n"
 											fi
 										else
-											echo "Synology Surveillance Station successfully shutdown"
+											echo -e "\n\nSynology Surveillance Station successfully shutdown\n\n"
 											echo "Restarting Synology Surveillance Station...."
 											if [ $debug -eq 1 ]; then
 												echo "Debug Mode - Starting Package SurveillanceStation"
@@ -1118,8 +1213,12 @@ if [ -r "$config_file_location" ]; then
 											sleep 1
 											status=$(/usr/syno/bin/synopkg is_onoff "SurveillanceStation")
 											if [ "$status" = "package SurveillanceStation is turned on" ]; then
+												echo -e "\n\nSynology Surveillance Station successfully restarted\n\n"
+												echo "$current_time" > $SS_Station_restart_tracking
+												time_diff=0
 												if [ $sendmail_installed -eq 1 ]; then
-													mailbody="ALERT! - Synology Surveillance Station Appeared to no longer be utilizing the GPU. Automatic restart of Synology Surveillance Station was enabled and was successfully restarted. "
+													now=$(date +"%T")
+													mailbody="$now - ALERT! - Synology Surveillance Station Appeared to no longer be utilizing the GPU. Automatic restart of Synology Surveillance Station was enabled and was successfully restarted. "
 													echo "from: $from_email_address " > $log_file_location/GPU0_contents.txt
 													echo "to: $email_address " >> $log_file_location/GPU0_contents.txt
 													echo "subject: $nas_name Synology Surveillance Station Low GPU Usage - Synology Surveillance Station Restarted" >> $log_file_location/GPU0_contents.txt
@@ -1129,30 +1228,19 @@ if [ -r "$config_file_location" ]; then
 													if [[ "$email_response" == "" ]]; then
 														echo "" |& tee -a $log_file_location/GPU0_contents.txt
 														echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
-														GPU_message_tracker=$current_time
-														
-														#the GPU's email notification time stamp has changed, we need to save it to file for later tracking 
-														for (( counter=0; counter<$number_drives_in_system; counter++ ))
-														do
-															if [ $counter -eq 0 ];then
-																echo -n "${disk_messge_tracker[$counter]}" > $email_logging_file_location
-															else
-																echo -n ",${disk_messge_tracker[$counter]}" >> $email_logging_file_location
-															fi
-														done
-														
-														echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
-														
-														if [ $GPU_installed -eq 1 ];then
-															echo -n ",$GPU_message_tracker" >> $email_logging_file_location #write GPU logging variable
-														fi	
 													else
 														echo "WARNING - could not send email notification. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
 													fi
+												else
+													echo -e "\n\nERROR -- Could not send alert email -- command \"sendmail\" is not available\n\n"
 												fi
 											else
+												echo -e "\n\nSynology Surveillance Station was shutdown but FAILED to restart\n\n"
+												echo "$current_time" > $SS_Station_restart_tracking
+												time_diff=0
 												if [ $sendmail_installed -eq 1 ]; then
-													mailbody="ALERT! - Synology Surveillance Station Appeared to no longer be utilizing the GPU. Automatic restart of Synology Surveillance Station was enabled and was NOT successfully restarted. "
+													now=$(date +"%T")
+													mailbody="$now - ALERT! - Synology Surveillance Station Appeared to no longer be utilizing the GPU. Automatic restart of Synology Surveillance Station was enabled and was NOT successfully restarted. "
 													echo "from: $from_email_address " > $log_file_location/GPU0_contents.txt
 													echo "to: $email_address " >> $log_file_location/GPU0_contents.txt
 													echo "subject: $nas_name Synology Surveillance Station Low GPU Usage - Synology Surveillance Station Restart FAILED" >> $log_file_location/GPU0_contents.txt
@@ -1162,68 +1250,51 @@ if [ -r "$config_file_location" ]; then
 													if [[ "$email_response" == "" ]]; then
 														echo "" |& tee -a $log_file_location/GPU0_contents.txt
 														echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
-														GPU_message_tracker=$current_time
-														
-														#the GPU's email notification time stamp has changed, we need to save it to file for later tracking 
-														for (( counter=0; counter<$number_drives_in_system; counter++ ))
-														do
-															if [ $counter -eq 0 ];then
-																echo -n "${disk_messge_tracker[$counter]}" > $email_logging_file_location
-															else
-																echo -n ",${disk_messge_tracker[$counter]}" >> $email_logging_file_location
-															fi
-														done
-														
-														echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
-														
-														if [ $GPU_installed -eq 1 ];then
-															echo -n ",$GPU_message_tracker" >> $email_logging_file_location #write GPU logging variable
-														fi
 													else
 														echo "WARNING - could not send email notification. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
 													fi
+												else
+													echo -e "\n\nERROR -- Could not send alert email -- command \"sendmail\" is not available\n\n"
 												fi
 											fi
 										fi
 									else
-										#automatic restart is not enabled, so at least send a notification email 
-										if [ $sendmail_installed -eq 1 ]; then
-											mailbody="ALERT! - Synology Surveillance Station Appears to no longer be utilizing the GPU. Note, automatic restart of Synology Surveillance Station is not enabled. Manually check the status of Synology Surveillance Station."
-											echo "from: $from_email_address " > $log_file_location/GPU0_contents.txt
-											echo "to: $email_address " >> $log_file_location/GPU0_contents.txt
-											echo "subject: $nas_name Synology Surveillance Station Low GPU Usage " >> $log_file_location/GPU0_contents.txt
-											echo "" >> $log_file_location/GPU0_contents.txt
-											echo $mailbody >> $log_file_location/GPU0_contents.txt
-											email_response=$(sendmail -t < $log_file_location/GPU0_contents.txt  2>&1)
-											if [[ "$email_response" == "" ]]; then
-												echo "" |& tee -a $log_file_location/GPU0_contents.txt
-												echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
-												GPU_message_tracker=$current_time
-												
-												#the GPU's email notification time stamp has changed, we need to save it to file for later tracking 
-												for (( counter=0; counter<$number_drives_in_system; counter++ ))
-												do
-													if [ $counter -eq 0 ];then
-														echo -n "${disk_messge_tracker[$counter]}" > $email_logging_file_location
-													else
-														echo -n ",${disk_messge_tracker[$counter]}" >> $email_logging_file_location
-													fi
-												done
-												
-												echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
-												
-												if [ $GPU_installed -eq 1 ];then
-													echo -n ",$GPU_message_tracker" >> $email_logging_file_location #write GPU logging variable
-												fi	
+										if [ $time_diff -ge $email_interval ]; then
+											#automatic restart is not enabled, so at least send a notification email 
+											echo "$current_time" > $SS_Station_restart_tracking
+											time_diff=0
+											if [ $sendmail_installed -eq 1 ]; then
+												now=$(date +"%T")
+												mailbody="$now - ALERT! - Synology Surveillance Station Appears to no longer be utilizing the GPU. Note, automatic restart of Synology Surveillance Station is not enabled. Manually check the status of Synology Surveillance Station."
+												echo "from: $from_email_address " > $log_file_location/GPU0_contents.txt
+												echo "to: $email_address " >> $log_file_location/GPU0_contents.txt
+												echo "subject: $nas_name Synology Surveillance Station Low GPU Usage " >> $log_file_location/GPU0_contents.txt
+												echo "" >> $log_file_location/GPU0_contents.txt
+												echo $mailbody >> $log_file_location/GPU0_contents.txt
+												email_response=$(sendmail -t < $log_file_location/GPU0_contents.txt  2>&1)
+												if [[ "$email_response" == "" ]]; then
+													echo "" |& tee -a $log_file_location/GPU0_contents.txt
+													echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
+												else
+													echo "WARNING - could not send email notification about GPU loading. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
+												fi
 											else
-												echo "WARNING - could not send email notification about GPU loading. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
+												echo -e "\n\nERROR -- Could not send alert email -- command \"sendmail\" is not available\n\n"
 											fi
+										else
+											echo -e "\nNote, automatic restart of Synology Surveillance Station is not enabled. Manually check the status of Synology Surveillance Station.\n\nAnother Email will be sent in $(( $email_interval - $time_diff )) Minuets"
 										fi
 									fi
 								else
 									echo "Synology Surveillance Station is not running, skipping restart checks"
 								fi
+							else
+								echo "Only $time_diff minuets have passed since the GPU load and temperature were reported too low. In $(( $SS_restart_delay_minuets - $time_diff )) Minutes SurveillanceStation auto restart processes will initiate"
 							fi
+						fi
+					else
+						if [ -r "$SS_Station_restart_tracking" ]; then
+							rm $SS_Station_restart_tracking
 						fi
 					fi
 					
@@ -1236,18 +1307,17 @@ if [ -r "$config_file_location" ]; then
 					post_url=${post_url//\ %/$secondString}
 
 					if [ $sendmail_installed -eq 1 ]; then
-						if [ $gpuTemperature -ge $max_GPU ]
-						then
+						if [ $gpuTemperature -ge $max_GPU ]; then
 						#echo the disk temp has been exceeded
 						
 							current_time=$( date +%s )
 							time_diff=$((( $current_time - $GPU_message_tracker ) / 60 ))
 							echo "time_diff is $time_diff minuets"
 							
-							if [ $time_diff -ge $email_interval ]
-							then
-							#echo the email has not been sent in over 1 hour, re-sending email
-								mailbody="Warning the temperature of the NVR GPU on $nas_name has exceeded $max_GPU Degrees C / $max_GPU_f Degrees F. The Temperature is currently $gpuTemperature degrees"
+							if [ $time_diff -ge $email_interval ]; then
+								#echo the email has not been sent in over 1 hour, re-sending email
+								now=$(date +"%T")
+								mailbody="$now - Warning the temperature of the NVR GPU on $nas_name has exceeded $max_GPU Degrees C / $max_GPU_f Degrees F. The Temperature is currently $gpuTemperature degrees"
 								echo "from: $from_email_address " > $log_file_location/GPU0_contents.txt
 								echo "to: $email_address " >> $log_file_location/GPU0_contents.txt
 								echo "subject: $nas_name GPU Temperature Warning " >> $log_file_location/GPU0_contents.txt
@@ -1258,29 +1328,32 @@ if [ -r "$config_file_location" ]; then
 									echo "" |& tee -a $log_file_location/GPU0_contents.txt
 									echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
 									GPU_message_tracker=$current_time
+									time_diff=0
 
 									#the GPU's email notification time stamp has changed, we need to save it to file for later tracking 
 									for (( counter=0; counter<$number_drives_in_system; counter++ ))
 									do
 										if [ $counter -eq 0 ];then
-											echo -n "${disk_messge_tracker[$counter]}" > $email_logging_file_location
-									else
-										echo -n ",${disk_messge_tracker[$counter]}" >> $email_logging_file_location
-									fi
+											echo -n "${disk_messge_tracker[$counter]}" > $email_last_sent
+										else
+											echo -n ",${disk_messge_tracker[$counter]}" >> $email_last_sent
+										fi
 									done
 												
-									echo -n ",$CPU_message_tracker" >> $email_logging_file_location #write CPU logging variable
+									echo -n ",$CPU_message_tracker" >> $email_last_sent #write CPU logging variable
 												
 									if [ $GPU_installed -eq 1 ];then
-										echo -n ",$GPU_message_tracker" >> $email_logging_file_location #write GPU logging variable
+										echo -n ",$GPU_message_tracker" >> $email_last_sent #write GPU logging variable
 									fi
 								else
 									echo "WARNING - could not send email notification that the GPU is overheating. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
 								fi
+							else
+								echo "Only $time_diff minuets have passed since the last notification that the GPU is overheating, email will be sent every $email_interval minutes. $(( $email_interval - $time_diff )) Minutes Remaining Until Next Email"
 							fi
 						fi
 					else
-						echo "WARNING - could not send email notification that the GPU is overheating. the temperature of the NVR GPU on $nas_name has exceeded $max_GPU Degrees C / $max_GPU_f Degrees F"
+						echo "WARNING - could not send email notification that the GPU is overheating. The temperature of the NVR GPU on $nas_name has exceeded $max_GPU Degrees C / $max_GPU_f Degrees F"
 					fi
 				else
 					echo "Skipping GPU capture"
@@ -1313,5 +1386,46 @@ if [ -r "$config_file_location" ]; then
 		echo "script is disabled"
 	fi
 else
-	echo "Configuration file unavailable"
+	#determine when the last time a general notification email was sent out. this will make sure we send an email only every x minutes
+	current_time=$( date +%s )
+	if [ -r "$SS_Station_restart_tracking" ]; then
+		read email_time < $SS_Station_restart_tracking
+		email_time_diff=$((( $current_time - $email_time ) / 60 ))
+	else 
+		echo "$current_time" > $SS_Station_restart_tracking
+		email_time_diff=0
+	fi
+	
+	now=$(date +"%T")
+	echo "Configuration file for script \"${0##*/}\" is missing, skipping script and will send alert email every 60 minuets"
+	if [ $email_time_diff -ge 60 ]; then
+		#send an email indicating script config file is missing and script will not run
+		mailbody="$now - Warning NAS SNMP Monitoring Failed for script \"${0##*/}\" - Configuration file is missing "
+		echo "from: $from_email_address " > $email_contents
+		echo "to: $email_address " >> $email_contents
+		echo "subject: Warning NAS SNMP Monitoring Failed for script \"${0##*/}\" - Configuration file is missing " >> $email_contents
+		echo "" >> $email_contents
+		echo $mailbody >> $email_contents
+		
+		if [[ "$email_address" == "" || "$from_email_address" == "" ]];then
+			echo -e "\n\nNo email address information is configured, Cannot send an email indicating script \"${0##*/}\" config file is missing and script will not run"
+		else
+			if [ $sendmail_installed -eq 1 ]; then
+				email_response=$(sendmail -t < $email_contents  2>&1)
+				if [[ "$email_response" == "" ]]; then
+					echo -e "\nEmail Sent Successfully indicating script \"${0##*/}\" config file is missing and script will not run" |& tee -a $email_contents
+					current_time=$( date +%s )
+					echo "$current_time" > $last_time_email_sent
+					email_time_diff=0
+				else
+					echo -e "\n\nWARNING -- An error occurred while sending email. The error was: $email_response\n\n" |& tee $email_contents
+				fi	
+			else
+				echo "Unable to send email, \"sendmail\" command is unavailable"
+			fi
+		fi
+	else
+		echo -e "\n\nAnother email notification will be sent in $(( 60 - $email_time_diff)) Minutes"
+	fi
+	exit 1
 fi
