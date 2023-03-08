@@ -89,6 +89,38 @@ Some items like system, GPU, CPU, and disk temperatures can send alert email not
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
+<!-- To-Do List -->
+## to-do
+
+These are all items that I plan to add to the script's functionality in the future. 
+
+1. add abilty for script to send email notifcations if the raid or disk status indicates bad
+
+2. add script logic to send hourly email notifiactions on data scrubbing (both BTRFS and RAID scrubbing) if data scrubbing is actually active. this will inform the user if any errors have occured and the hourly progress of the scrub
+
+3. add the following addtional SNMP monitoring items 
+https://global.download.synology.com/download/Document/Software/DeveloperGuide/Firmware/DSM/All/enu/Synology_DiskStation_MIB_Guide.pdf
+
+a. Synology Services MIB (OID: .1.3.6.1.4.1.6574.6) --> all items. this will be a new item in the configuration page that can be turned off or on as desired
+
+b. Synology StorageIO MIB (OID: .1.3.6.1.4.1.6574.101) --> "storageIODeviceSerial"
+
+c. Synology FlashCache MIB (OID: .1.3.6.1.4.1.6574.103) --> all items. this will be a new item in the configuration page that can be turned off or on as desired
+
+d. Synology iSCSI LUN MIB (OID: .1.3.6.1.4.1.6574.104) --> all items. this will be a new item in the configuration page that can be turned off or on as desired
+
+e. Synology SHA MIB (OID: .1.3.6.1.4.1.6574.106) --> all items. this will be a new item in the configuration page that can be turned off or on as desired
+
+f. Synology NFS MIB (OID: .1.3.6.1.4.1.6574.107) --> all items. this will be a new item in the configuration page that can be turned off or on as desired
+
+g. Synology Port MIB (OID: .1.3.6.1.4.1.6574.109) --> all items. This will be added under the network status details
+
+h. Synology iSCSI Target MIB (OID: .1.3.6.1.4.1.6574.110) --> all items. this will be a new item in the configuration page that can be turned off or on as desired
+
+
+
+<p align="right">(<a href="#top">back to top</a>)</p>
+
 
 
 <!-- GETTING STARTED -->
@@ -315,7 +347,7 @@ NVidia Drivers are not installed
 NOTE: if ```MailPlus Server``` is not installed, the script will give warnings that it is not installed. if this is acceptable then ignore the warnings
 NOTE: if this is a regular Synology NAS and not a DVA unit like the DVA3219, DVA3221 etc, then no GPU will be available and the warning ```NVidia Drivers are not installed``` can be ignored
 5. while debug mode is enabled, each time the script runs it will output the tracking information for "disk_messge_tracker" and "CPU_message_tracker"
-these values increment during executions to allow the script to track the amount of time that has passed since an email notification was last sent. 
+these values store the unit time stamp when emails were last sent to track the amount of time that has passed since an email notification was last sent. This prevents a flood of notification emails being sent out.  
 
 ```
 disk_messge_tracker id 0 is equal to: 1674939601
@@ -340,13 +372,15 @@ or
 
 ```No Such Instance currently exists at this OID```
 
+or
+
 ```invalid number``` 
 
-these errors indicate that InfluxDB cannot intake the data properly 
+these errors indicate that InfluxDB cannot intake the data properly and debugging is needed. ensure no other errors were listed in the script output and ensure all values of the configuration paramters displayed in debug mode were correct.
 
 7.) after it is confirmed the script is working without errors and that it is confirmed that InfluxDB is receiving the data correctly, change the ```debug=1``` back to a ```debug=0``` 
 
-8.) now proceed with editing the crontab file to start the automatic execution of the script ever 60 seconds. 
+8.) now proceed with editing the crontab file to start the automatic execution of the script every 60 seconds. 
 
 
 ### Configuration of crontab
