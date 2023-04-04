@@ -1,3 +1,7 @@
+# Synology SNMP Logging
+<a href="https://github.com/wallacebrf/synology_snmp/releases"><img src="https://img.shields.io/github/v/release/wallacebrf/synology_snmp.svg"></a>
+<a href="https://hits.seeyoufarm.com"><img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fwallacebrf%2Fsynology_snmp&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false"/></a>
+
 <div id="top"></div>
 <!--
 *** comments....
