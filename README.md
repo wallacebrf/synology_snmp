@@ -71,13 +71,13 @@ The script gathers different SNMP based details from a Synology NAS using SNMP v
 
 2. Memory: Total Memory, Real Memory Available, Buffer Memory Used, Cached Memory Used, Memory Free
 
-3. CPU: CPU Usage Idle
+3. CPU: usage_idle, ssCpuUser, ssCpuSystem, cpu_usage
 
-4. Volume: Volume Name, Volume Total Size, Volume Used Size
+4. Volume: Volume Name, Volume Total Size, Volume Used Size, Volume Reads (bytes/sec), Volume Writes (bytes/sec), volume load (percent)
 
-5. RAID: RAID Name, RAID Status, RAID Free Size, RAID Total Size. For DSM specifically, added the "Hot Spare Count" 
+5. RAID: RAID Name, RAID Status, RAID Free Size, RAID Total Size, Hot Spare Count
 
-6. Disk: Disk Name, Disk Model, Disk Type, Disk Status, Disk Temperature. For DSM Specifically, added Disk Role, Smart DATA (Disk Retry Count, Bad Sector Count, Disk Remaining Life)
+6. Disk: Disk Name, Disk Model, Disk Type, Disk Status, Disk Role, Disk Retry, Disk Bad Sectors, Disk Identify Fail, Disk Remaining Life, Disk Reads (bytes/sec) Disk Writes (bytes/sec), Disk load (pecent), Disk Serial Number
 
 7. UPS: UPS Battery Charge, UPS Load, UPS Status, UPS Battery Runtime
 
@@ -89,42 +89,19 @@ The script gathers different SNMP based details from a Synology NAS using SNMP v
 
 NOTE: this script can gather two parameters that are NOT AVILABLE through SNMP, those are GPU Temperature and GPU Fan speed. This script collects it from the ```nvidia-smi``` driver commands. 
 
+11. synology_services:  Number of connections for CIFS, AFP, NFS, FTP, SFTP, HTTP/HTTPS, TELNET, SSH, OTHER=0
+
+12. FlashCache: disk_reads, disk_writes, ReadHits, WriteHits, TotalRead, TotalWrite, ReadHitRate, WriteHitRate, ReadSeqSkip, WriteSeqSkip
+
+13. iSCSI_LUN: ThroughputReadHigh, ThroughputReadLow, ThroughputWriteHigh, ThroughputWriteLow, IopsRead, IopsWrite, DiskLatencyRead, DiskLatencyWrite, NetworkLatencyTx, NetworkLatencyRx, IoSizeRead, IoSizeWrite, QueueDepth, Type, DiskLatencyAvg, ThinProvisionVolFreeMBs
+
+14. SHA (Synology High Availability): activeNodeName, passiveNodeName, clusterAutoFailover, clusterName, clusterStatus, heartbeatStatus, heartbeatTxRate, heartbeatLatency
+
+15. NFS: TotalMaxLatency, ReadMaxLatency, WriteMaxLatency, TotalOPS, ReadOPS, WriteOPS
+
 Some items like system, GPU, CPU, and disk temperatures can send alert email notifications based on configurable set-points. 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
-
-<!-- To-Do List -->
-## to-do
-
-These are all items that I plan to add to the script's functionality in the future. 
-
-1. add abilty for script to send email notifcations if the raid or disk status indicates bad
-
-2. add script logic to send hourly email notifiactions on data scrubbing (both BTRFS and RAID scrubbing) if data scrubbing is actually active. this will inform the user if any errors have occured and the hourly progress of the scrub
-
-3. add the following addtional SNMP monitoring items 
-https://global.download.synology.com/download/Document/Software/DeveloperGuide/Firmware/DSM/All/enu/Synology_DiskStation_MIB_Guide.pdf
-
-a. Synology Services MIB (OID: .1.3.6.1.4.1.6574.6) --> all items. this will be a new item in the configuration page that can be turned off or on as desired
-
-b. Synology StorageIO MIB (OID: .1.3.6.1.4.1.6574.101) --> "storageIODeviceSerial"
-
-c. Synology FlashCache MIB (OID: .1.3.6.1.4.1.6574.103) --> all items. this will be a new item in the configuration page that can be turned off or on as desired
-
-d. Synology iSCSI LUN MIB (OID: .1.3.6.1.4.1.6574.104) --> all items. this will be a new item in the configuration page that can be turned off or on as desired
-
-e. Synology SHA MIB (OID: .1.3.6.1.4.1.6574.106) --> all items. this will be a new item in the configuration page that can be turned off or on as desired
-
-f. Synology NFS MIB (OID: .1.3.6.1.4.1.6574.107) --> all items. this will be a new item in the configuration page that can be turned off or on as desired
-
-g. Synology Port MIB (OID: .1.3.6.1.4.1.6574.109) --> all items. This will be added under the network status details
-
-h. Synology iSCSI Target MIB (OID: .1.3.6.1.4.1.6574.110) --> all items. this will be a new item in the configuration page that can be turned off or on as desired
-
-
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
 
 
 <!-- GETTING STARTED -->
@@ -135,7 +112,7 @@ This project is written around a Synology NAS and their DSM specific SNMP OIDs a
 ### Prerequisites
 
 1. this script is designed to be executed every 60 seconds
-2. this script requires the installation of Synology MailPlus server package in package center in order to send emails. If it is not installed, the script will still work it just will not be able to send emails. 
+2. this script recommends the installation of Synology MailPlus server package in package center in order to send emails. If Synology MailPlus server package is not installed, or configured, the script can be configured to use the same email server as found in Control Panel --> Notifications. However Synology MailPlus server package is able to send emails approximately 17x times faster, allows for queueing of messages if required, and allows for historical logs. 
 
 the mail plus server must be properly configured to relay received messages to another email account. NOTE: this read-me DOES NOT explain how to properly configure mail plus server. 
 
@@ -187,23 +164,39 @@ note: ```%PHP_Server_Root%``` is what ever shared folder location the PHP web se
 1. Open the ```synology_snmp.sh``` file in a text editor. 
 2. the script contains the following configuration variables that will need to be un-commented
 ```
-email_last_sent="/volume1/web/logging/notifications/synology_snmp_last_email_sent.txt"
-lock_file_location="/volume1/web/logging/notifications/synology_snmp.lock"
-config_file_location="/volume1/web/config/config_files/config_files_local/system_config.txt"
 log_file_location="/volume1/web/logging/notifications"
+email_last_sent="$log_file_location/synology_snmp_last_email_sent.txt"
+lock_file_location="$log_file_location/synology_snmp_debug.lock"
+config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
+SS_Station_restart_tracking="$log_file_location/SS_Station_restart_tracking.txt"
+use_mail_plus_server=0 #Note, while mail plus server is not required to send emails if desired, the email process is 17x times slower if NOT using mail plus server. In addition mailplus server queues the messages so if they fail to send, it will try again later, and it keeps a log of all messages sent. because of this it is recommended to use Mail Plus server
+
+#NOTE THIS IS NOT THE NAME UNDER "CONTROL PANEL --> INFO CENTER"
+#THIS VALUE IS DRAWN FROM "CONTROL PANEL --> TERMINAL & SNMP --> SNMP DEVICE INFORMATION --> DEVICE NAME
+nas_name="Your_NAS_Name" #this is only needed if the script cannot access the server name over SNMP, or if the config file is unavailable and will be used in any error messages
+
+#depending on the number of drives, if the system has SSD's or regular HDD disks, the time required to execute the entire script takes time and may not be the same on all systems.
+#this value can be adjusted to ensure the script executes all of its capture intervals within 60 seconds. 
+#otherwise the script will not allow the next script to execute and a ~60 second period of time will NOT have data collected. 
+#
+#run the script with "time" before it such as "bash time synology_snmp.sh" and ensure the time required is less than 59 seconds, adjust the number to be below 59 seconds
+capture_interval_adjustment=6 
 ```
 
 for the variables above, ensure the "/volume1/web" is the correct location for the root of the PHP web server, correct as required
 
-3. delete the lines 98 through 127 which is between ```#for my personal use as i have multiple Synology systems, these lines can be deleted by other users``` and ```EMAIL SETTINGS USED IF CONFIGURATION FILE IS UNAVAIL``` as those are for my personal use as i use this script for several units that have slightly different configurations	
+3. delete the lines 118 through 155 which is between ```#for my personal use as i have multiple Synology systems, these lines can be deleted by other users``` and ```EMAIL SETTINGS USED IF CONFIGURATION FILE IS UNAVAIL``` as those are for my personal use as i use this script for several units that have slightly different configurations	
 
-4. find the lines
+4. edit the following lines so if the script cannot load the configuration file it can still send an email
+
 ```
-influx_http_type="http" #set to "http" or "https" based on your influxDB version
-influxdb_org="home"
-``` 
-
-Ensure the organization matches your configuration and ensure the http type matches how your system is configured
+#########################################################
+#EMAIL SETTINGS USED IF CONFIGURATION FILE IS UNAVAILABLE
+#These variables will be overwritten with new corrected data if the configuration file loads properly. 
+email_address="email@email.com"
+from_email_address="email@email.com"
+########################################################
+```
 
 ### Configuration "server2_config.php"
 
@@ -302,9 +295,9 @@ Now that the required configuration files are made using the web-interface, we c
 2. open SSH and naviagte to where the ```synology_snmp.sh``` file is located. type the following command ```bash synology_snmp.sh``` and press enter
 3. the script will run and load all of the configuration settings. in debug mode it will print out all of the configuration parameters. verify they are correct
 ```
-max_disk_temp_f is 65
-max_CPU0_f is 65
-email_address is admin@admin.com
+max_disk_temp_f is 113
+max_CPU0_f is 160
+email_address is REDACTED
 email_interval is 60
 capture_system is 1
 capture_memory is 1
@@ -312,61 +305,79 @@ capture_cpu is 1
 capture_volume is 1
 capture_raid is 1
 capture_disk is 1
-capture_ups is 1
-capture_networkis 1
-capture_interval is 60
-nas_url is 10.10.10.10
-influxdb_host is 10.10.10.10
+capture_ups is 0
+capture_network is 1
+capture_interval is 15
+nas_url is localhost
+influxdb_host is REDACTED
 influxdb_port is 8086
-influxdb_name is name
-influxdb_user is user
+influxdb_name is REDACTED
+influxdb_user is test_user
 influxdb_pass is REDACTED
 script_enable is 1
-max_disk_temp is 18
-max_CPU0 is 18
+max_disk_temp is 45
+max_CPU0 is 71
 snmp_authPass1 is REDACTED
 snmp_privPass2 is REDACTED
-number_drives_in_system is 12
+number_drives_in_system is 5
 GPU_installed is 0
-nas_snmp_user is user
+nas_snmp_user is brian
 snmp_auth_protocol is MD5
 snmp_privacy_protocol is AES
 capture_GPU is 0
-max_GPU_f is 65
-max_GPU is 18
-from_email_address is admin@admin.com
-influx_http_type is https
-influxdb_org is org
+max_GPU_f is 67
+max_GPU is 19
+from_email_address is REDACTED
+influx_http_type is http
+influxdb_org is home
 enable_SS_restart is 0
-SS_restart_GPU_usage_threshold is 15
-SS_restart_GPU_temp_threshold is 54
-Synology SNMP settings are not Blank
-WARNING! ---- MailPlus Server NOT is installed, cannot send email notifications
+SS_restart_GPU_usage_threshold is 10
+SS_restart_GPU_temp_threshold is 50
+capture_synology_services is 1
+capture_FlashCache is 1
+capture_iSCSI_LUN is 1
+capture_SHA is 1
+capture_NFS is 1
+capture_iSCSI_Target is 1
 NVidia Drivers are not installed
-/volume2/web/synology_snmp/logging/notifications/logging_variable2.txt is not available, writing default values
-/volume2/web/synology_snmp/logging/notifications/logging_variable2.txt created with default values. Re-run the script.
+/volume1/web/logging/notifications/synology_snmp_last_email_sent.txt is not available, writing default values
+current time is 1682699891
+disk_temp_messge_tracker[0] is equal to 1682699891
+disk_temp_messge_tracker[1] is equal to 1682699891
+disk_temp_messge_tracker[2] is equal to 1682699891
+disk_temp_messge_tracker[3] is equal to 1682699891
+disk_temp_messge_tracker[4] is equal to 1682699891
+CPU_message_tracker is equal to 1682699891
+raid_messge_tracker[0] is equal to 1682699891
+raid_messge_tracker[1] is equal to 1682699891
+raid_messge_tracker[2] is equal to 1682699891
+disk_status_messge_tracker[0] is equal to 1682699891
+disk_status_messge_tracker[1] is equal to 1682699891
+disk_status_messge_tracker[2] is equal to 1682699891
+disk_status_messge_tracker[3] is equal to 1682699891
+disk_status_messge_tracker[4] is equal to 1682699891
+/volume1/web/logging/notifications/synology_snmp_last_email_sent.txt created with default values.
 ```
 
-4. run the command ```bash synology_snmp.sh``` and press enter again this time the script should operate normally. 
-NOTE: if ```MailPlus Server``` is not installed, the script will give warnings that it is not installed. if this is acceptable then ignore the warnings
 NOTE: if this is a regular Synology NAS and not a DVA unit like the DVA3219, DVA3221 etc, then no GPU will be available and the warning ```NVidia Drivers are not installed``` can be ignored
-5. while debug mode is enabled, each time the script runs it will output the tracking information for "disk_messge_tracker" and "CPU_message_tracker"
+5. while debug mode is enabled, each time the script runs it will output the tracking information for "disk_temp_messge_tracker", "CPU_message_tracker", "raid_messge_tracker", and "disk_status_messge_tracker"
 these values store the unit time stamp when emails were last sent to track the amount of time that has passed since an email notification was last sent. This prevents a flood of notification emails being sent out.  
 
 ```
-disk_messge_tracker id 0 is equal to: 1674939601
-disk_messge_tracker id 1 is equal to: 1674939601
-disk_messge_tracker id 2 is equal to: 1674939601
-disk_messge_tracker id 3 is equal to: 1674939601
-disk_messge_tracker id 4 is equal to: 1674939601
-disk_messge_tracker id 5 is equal to: 1674939601
-disk_messge_tracker id 6 is equal to: 1674939601
-disk_messge_tracker id 7 is equal to: 1674939601
-disk_messge_tracker id 8 is equal to: 1674939601
-disk_messge_tracker id 9 is equal to: 1674939601
-disk_messge_tracker id 10 is equal to: 1674939601
-disk_messge_tracker id 11 is equal to: 1674939601
-CPU_message_tracker is equal to 1674939601
+disk_temp_messge_tracker[0] is equal to 1682699891
+disk_temp_messge_tracker[1] is equal to 1682699891
+disk_temp_messge_tracker[2] is equal to 1682699891
+disk_temp_messge_tracker[3] is equal to 1682699891
+disk_temp_messge_tracker[4] is equal to 1682699891
+CPU_message_tracker is equal to 1682699891
+raid_messge_tracker[0] is equal to 1682699891
+raid_messge_tracker[1] is equal to 1682699891
+raid_messge_tracker[2] is equal to 1682699891
+disk_status_messge_tracker[0] is equal to 1682699891
+disk_status_messge_tracker[1] is equal to 1682699891
+disk_status_messge_tracker[2] is equal to 1682699891
+disk_status_messge_tracker[3] is equal to 1682699891
+disk_status_messge_tracker[4] is equal to 1682699891
 ```
 6. at the end of the script, it will output the results from InfluxDB. ensure you do NOT see any instances of the following
 
