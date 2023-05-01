@@ -1,5 +1,5 @@
 <?php
-//Version 4.01 dated 12/31/2022
+//Version 5.0 dated 5/1/2023
 //By Brian Wallace
 if($_SERVER['HTTPS']!="on") {
 
@@ -19,19 +19,22 @@ error_reporting(E_NOTICE);
 include $_SERVER['DOCUMENT_ROOT']."/functions.php";
 
 //USER DEFINED VARIABLES
-$form_submit_location="index.php?page=6&config_page=server2_snmp";
+
 //I have three different synology systems, each with possibly different values. if you only have one system, then only edit one line
 $server_type=1; //1=server2, 2=serverNVR, 3=serverplex
 
 if ($server_type==1) {
 	$config_file="/volume1/web/config/config_files/config_files_local/system_config2.txt";
 	$page_title="Server2 Logging Configuration Settings";
+	$form_submit_location="index.php?page=6&config_page=server2_snmp";
 }else if ($server_type==2) {
 	$config_file="/volume1/Server_NVR/web/logging/system_config_NVR2.txt";
 	$page_title="Server NVR Logging Configuration Settings";
+	$form_submit_location="index.php?page=6&config_page=servernvr_snmp";
 }else if ($server_type==3) {
 	$config_file="/volume1/server-plex/web/config/config_files/config_files_local/system_config2.txt";
 	$page_title="Server PLEX Logging Configuration Settings";
+	$form_submit_location="index.php?page=6&config_page=serverplex_snmp";
 	
 }
 
@@ -155,7 +158,22 @@ if ($server_type==1) {
 			
 			[$SS_restart_GPU_temp_threshold, $SS_restart_GPU_temp_threshold_error] = test_input_processing($_POST['SS_restart_GPU_temp_threshold'], $pieces[37], "numeric", 0, 100); 
 		  
-		  $put_contents_string="".$max_disk_temp_f.",".$max_CPU0_f.",".$email.",".$email_interval.",".$capture_system.",".$capture_memory.",".$capture_cpu.",".$capture_volume.",".$capture_raid.",".$capture_disk.",".$capture_ups.",".$capture_network.",".$capture_interval.",".$nas_url.",".$influxdb_host.",".$influxdb_port.",".$influxdb_name.",".$influxdb_user.",".$influxdb_pass.",".$script_enable.",".round((($max_disk_temp_f-32)*(5/9)),0).",".round((($max_CPU0_f-32)*(5/9)),0).",".$snmp_authPass1.",".$snmp_privPass2.",".$number_drives_in_system.",".$GPU_installed.",".$nas_snmp_user.",".$snmp_auth_protocol.",".$snmp_privacy_protocol.",".$capture_GPU.",".$max_GPU_f.",".round((($max_GPU_f-32)*(5/9)),0).",".$from_email.",".$influx_http_type.",".$influxdb_org.",".$enable_SS_restart.",".$SS_restart_GPU_usage_threshold.",".$SS_restart_GPU_temp_threshold."";
+		    [$capture_synology_services, $generic_error] = test_input_processing($_POST['capture_synology_services'], "", "checkbox", 0, 0);
+			
+			[$capture_FlashCache, $generic_error] = test_input_processing($_POST['capture_FlashCache'], "", "checkbox", 0, 0);
+			
+			[$capture_iSCSI_LUN, $generic_error] = test_input_processing($_POST['capture_iSCSI_LUN'], "", "checkbox", 0, 0);
+			
+			[$capture_SHA, $generic_error] = test_input_processing($_POST['capture_SHA'], "", "checkbox", 0, 0);
+			
+			[$capture_NFS, $generic_error] = test_input_processing($_POST['capture_NFS'], "", "checkbox", 0, 0);
+			
+			[$capture_iSCSI_Target, $generic_error] = test_input_processing($_POST['capture_iSCSI_Target'], "", "checkbox", 0, 0);
+		  
+		  
+		  
+		  
+		  $put_contents_string="".$max_disk_temp_f.",".$max_CPU0_f.",".$email.",".$email_interval.",".$capture_system.",".$capture_memory.",".$capture_cpu.",".$capture_volume.",".$capture_raid.",".$capture_disk.",".$capture_ups.",".$capture_network.",".$capture_interval.",".$nas_url.",".$influxdb_host.",".$influxdb_port.",".$influxdb_name.",".$influxdb_user.",".$influxdb_pass.",".$script_enable.",".round((($max_disk_temp_f-32)*(5/9)),0).",".round((($max_CPU0_f-32)*(5/9)),0).",".$snmp_authPass1.",".$snmp_privPass2.",".$number_drives_in_system.",".$GPU_installed.",".$nas_snmp_user.",".$snmp_auth_protocol.",".$snmp_privacy_protocol.",".$capture_GPU.",".$max_GPU_f.",".round((($max_GPU_f-32)*(5/9)),0).",".$from_email.",".$influx_http_type.",".$influxdb_org.",".$enable_SS_restart.",".$SS_restart_GPU_usage_threshold.",".$SS_restart_GPU_temp_threshold.",".$capture_synology_services.",".$capture_FlashCache.",".$capture_iSCSI_LUN.",".$capture_SHA.",".$capture_NFS.",".$capture_iSCSI_Target."";
 		  
 		  file_put_contents("$config_file",$put_contents_string );
 		  
@@ -201,6 +219,12 @@ if ($server_type==1) {
 			  $enable_SS_restart=$pieces[35];
 			  $SS_restart_GPU_usage_threshold=$pieces[36];
 			  $SS_restart_GPU_temp_threshold=$pieces[37];
+			  $capture_synology_services=$pieces[38];
+			  $capture_FlashCache=$pieces[39];
+			  $capture_iSCSI_LUN=$pieces[40];
+			  $capture_SHA=$pieces[41];
+			  $capture_NFS=$pieces[42];
+			  $capture_iSCSI_Target=$pieces[43];
 		   }else{
 			  $max_disk_temp_f=32;
 			  $max_CPU0_f=32;
@@ -240,8 +264,14 @@ if ($server_type==1) {
 			  $enable_SS_restart=0;
 			  $SS_restart_GPU_usage_threshold=15;
 			  $SS_restart_GPU_temp_threshold=54;
+			  $capture_synology_services=0;
+			  $capture_FlashCache=0;
+			  $capture_iSCSI_LUN=0;
+			  $capture_SHA=0;
+			  $capture_NFS=0;
+			  $capture_iSCSI_Target=0;
 			  
-			  $put_contents_string="".$max_disk_temp_f.",".$max_CPU0_f.",".$email.",".$email_interval.",".$capture_system.",".$capture_memory.",".$capture_cpu.",".$capture_volume.",".$capture_raid.",".$capture_disk.",".$capture_ups.",".$capture_network.",".$capture_interval.",".$nas_url.",".$influxdb_host.",".$influxdb_port.",".$influxdb_name.",".$influxdb_user.",".$influxdb_pass.",".$script_enable.",".round((($max_disk_temp_f-32)*(5/9)),0).",".round((($max_CPU0_f-32)*(5/9)),0).",".$snmp_authPass1.",".$snmp_privPass2.",".$number_drives_in_system.",".$GPU_installed.",".$nas_snmp_user.",".$snmp_auth_protocol.",".$snmp_privacy_protocol.",".$capture_GPU.",".$max_GPU_f.",".round((($max_GPU_f-32)*(5/9)),0).",".$from_email.",".$influx_http_type.",".$influxdb_org.",".$enable_SS_restart.",".$SS_restart_GPU_usage_threshold.",".$SS_restart_GPU_temp_threshold."";
+			  $put_contents_string="".$max_disk_temp_f.",".$max_CPU0_f.",".$email.",".$email_interval.",".$capture_system.",".$capture_memory.",".$capture_cpu.",".$capture_volume.",".$capture_raid.",".$capture_disk.",".$capture_ups.",".$capture_network.",".$capture_interval.",".$nas_url.",".$influxdb_host.",".$influxdb_port.",".$influxdb_name.",".$influxdb_user.",".$influxdb_pass.",".$script_enable.",".round((($max_disk_temp_f-32)*(5/9)),0).",".round((($max_CPU0_f-32)*(5/9)),0).",".$snmp_authPass1.",".$snmp_privPass2.",".$number_drives_in_system.",".$GPU_installed.",".$nas_snmp_user.",".$snmp_auth_protocol.",".$snmp_privacy_protocol.",".$capture_GPU.",".$max_GPU_f.",".round((($max_GPU_f-32)*(5/9)),0).",".$from_email.",".$influx_http_type.",".$influxdb_org.",".$enable_SS_restart.",".$SS_restart_GPU_usage_threshold.",".$SS_restart_GPU_temp_threshold.",".$capture_synology_services.",".$capture_FlashCache.",".$capture_iSCSI_LUN.",".$capture_SHA.",".$capture_NFS.",".$capture_iSCSI_Target."";
 		  
 			  file_put_contents("$config_file",$put_contents_string );
 		   }
@@ -362,6 +392,43 @@ if ($server_type==1) {
 									print "checked";
 							   }
 		   print "				>Enable SNMP Network Variable Capture? <font size=\"1\">Interface Name, Bytes Recv, Bytes Sent</font></p>
+		   
+		   
+		   
+		   <p>-> <input type=\"checkbox\" name=\"capture_synology_services\" value=\"1\" ";
+							   if ($capture_synology_services==1){
+									print "checked";
+							   }
+		   print "				>Enable SNMP Synology Services Capture? <font size=\"1\">Number of connections for CIFS, AFP, NFS, FTP, SFTP, HTTP/HTTPS, TELNET, SSH, OTHER</font></p>
+		   <p>-> <input type=\"checkbox\" name=\"capture_FlashCache\" value=\"1\" ";
+							   if ($capture_FlashCache==1){
+									print "checked";
+							   }
+		   print "				>Enable SNMP Flash Cache Variable Capture? <font size=\"1\">disk_reads, disk_writes, ReadHits, WriteHits, TotalRead, TotalWrite, ReadHitRate, WriteHitRate, ReadSeqSkip, WriteSeqSkip</font></p>
+		   <p>-> <input type=\"checkbox\" name=\"capture_iSCSI_LUN\" value=\"1\" ";
+							   if ($capture_iSCSI_LUN==1){
+									print "checked";
+							   }
+		   print "				>Enable SNMP iSCUSI LUN Variable Capture? <font size=\"1\">ThroughputReadHigh, ThroughputReadLow, ThroughputWriteHigh, ThroughputWriteLow, IopsRead, IopsWrite, DiskLatencyRead, DiskLatencyWrite, NetworkLatencyTx, NetworkLatencyRx, IoSizeRead, IoSizeWrite, QueueDepth, Type, DiskLatencyAvg, ThinProvisionVolFreeMBs</font></p>
+		   <p>-> <input type=\"checkbox\" name=\"capture_SHA\" value=\"1\" ";
+							   if ($capture_SHA==1){
+									print "checked";
+							   }
+		   print "				>Enable SNMP Synology High Availability Variable Capture? <font size=\"1\">activeNodeName, passiveNodeName, clusterAutoFailover, clusterName, clusterStatus, heartbeatStatus, heartbeatTxRate, heartbeatLatency</font></p>
+		   <p>-> <input type=\"checkbox\" name=\"capture_NFS\" value=\"1\" ";
+							   if ($capture_NFS==1){
+									print "checked";
+							   }
+		   print "				>Enable SNMP NFS Variable Capture? <font size=\"1\">TotalMaxLatency, ReadMaxLatency, WriteMaxLatency, TotalOPS, ReadOPS, WriteOPS</font></p>
+		   <p>-> <input type=\"checkbox\" name=\"capture_iSCSI_Target\" value=\"1\" ";
+							   if ($capture_iSCSI_Target==1){
+									print "checked";
+							   }
+		   print "				>Enable SNMP iSCUSI Target Variable Capture?</p>
+		   
+		   
+		   
+		   
 							<p>-> Data Logging Captures Per Minuet: <select name=\"capture_interval\">";
 								if ($capture_interval==10){
 									print "<option value=\"10\" selected>6</option>
