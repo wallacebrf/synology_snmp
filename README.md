@@ -423,7 +423,7 @@ Two dashboard JSON files are available. The entire dashboard is written around t
 the Dashboard requires the use of an add-on plug in from
 https://grafana.com/grafana/plugins/mxswat-separator-panel/
 
-there are three different items in the JSON that will need to be adjusted to match your installation. the first the bucket it is drawing data from. edit this to match your bucket name
+there are four different items in the JSON that will need to be adjusted to match your installation. the first the bucket it is drawing data from. edit this to match your bucket name as shown in InfluxDB
 ```
 from(bucket: \"Test/autogen\")
 ```
@@ -434,6 +434,47 @@ next, edit the name of the Synology NAS as reported by the script. the "Server_N
 r[\"nas_name\"] == \"Server2\")
 r[\"nas_name\"] == \"Server_NVR\")
 ```
+
+next we need to update the UID of the datasource from InfluxDB. we need to determine the UID of your installation. follow these steps to do so:
+
+1.) create a InfluxDB data source configured as using the "FLUX" language, name it as you wish. Ensure the "Test" button at the bottom reports the data source works. 
+
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/UID_1.png" alt="1313">
+
+2.) once the data source is made and working click on "Build a Dashboard"
+
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/UID_2.png" alt="1313">
+
+3.) Click on "Add Visualization"
+
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/UID_3.png" alt="1313">
+
+4.) Choose the data source you have previusly created
+
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/UID_4.png" alt="1313">
+
+5.) do not worry about adjusting settings within the visualization and just click "Apply"
+
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/UID_5.png" alt="1313">
+
+6.) Click on "Dashboard Settings" at the top
+
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/UID_6.png" alt="1313">
+
+7.) on the settings screen go to "JSON Model" and find the "datasource" and copy the value for the "uid" for your data source. 
+
+<img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/UID_7.png" alt="1313">
+
+within the JSON dashboard file for this project you can now perform a find/replace for all of the instances of the uid in the supplied dashboards which are currently set to "3I0W7vY7k". 
+
+```
+"datasource": {
+        "type": "influxdb",
+        "uid": "3I0W7vY7k"
+      },
+```
+
+now the dashboard can be imported into Grafana. 
 
 ### Optional Performance Improvement 
 
