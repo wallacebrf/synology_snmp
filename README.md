@@ -423,7 +423,7 @@ Two dashboard JSON files are available. The entire dashboard is written around t
 the Dashboard requires the use of an add-on plug in from
 https://grafana.com/grafana/plugins/mxswat-separator-panel/
 
-there are four different items in the JSON that will need to be adjusted to match your installation. the first the bucket it is drawing data from. edit this to match your bucket name as shown in InfluxDB
+there are five different items in the JSON that will need to be adjusted to match your installation. the first the bucket it is drawing data from. edit this to match your bucket name as shown in InfluxDB
 ```
 from(bucket: \"Test/autogen\")
 ```
@@ -433,6 +433,12 @@ next, edit the name of the Synology NAS as reported by the script. the "Server_N
 ```
 r[\"nas_name\"] == \"Server2\")
 r[\"nas_name\"] == \"Server_NVR\")
+```
+
+next we need to update the title of the dashboard, search for the following line and edit as desired
+
+```
+ "title": "Server2 SMART",
 ```
 
 next we need to update the UID of the datasource from InfluxDB. we need to determine the UID of your installation. follow these steps to do so:
@@ -449,7 +455,7 @@ next we need to update the UID of the datasource from InfluxDB. we need to deter
 
 <img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/UID_3.png" alt="1313">
 
-4.) Choose the data source you have previusly created
+4.) Choose the data source you have previously created
 
 <img src="https://raw.githubusercontent.com/wallacebrf/synology_snmp/main/Images/UID_4.png" alt="1313">
 
@@ -473,6 +479,14 @@ within the JSON dashboard file for this project you can now perform a find/repla
         "uid": "3I0W7vY7k"
       },
 ```
+
+do NOT change the value of this line
+
+```
+ "uid": "8jEBJg77z",
+```
+
+that uid will be part of the URL used to access the dashboard and can remain as is
 
 now the dashboard can be imported into Grafana. 
 
