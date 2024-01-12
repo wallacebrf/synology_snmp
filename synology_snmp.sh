@@ -1,8 +1,8 @@
 #!/bin/bash
-#version 3.0 dated 4/28/2023
+#version 4.0 dated 12/17/2023
 #By Brian Wallace
 
-#based on the script found here by user kernelkaribou
+#initially based on the script found here by user kernelkaribou
 #https://github.com/kernelkaribou/synology-monitoring
 
 #This script pulls various information from the Synology NAS
@@ -38,49 +38,46 @@
 	#add the following line: 
 	#	*	*	*	*	*	root	$path_to_file/$filename
 	#details on crontab can be found here: https://man7.org/linux/man-pages/man5/crontab.5.html
-#5.) This script only supports InfluxdB version 2. as version 1.x is no longer supported, it is recommended to upgrade to version 2 anyways
-#6.) this script only supports DSM versions 6.x.x and 7.0.x, and 7.1.x --- as of 4/28/2023 it has not been tested with DSM 7.2
+#5.) This script only supports InfluxdB version 2.x as version 1.x is no longer supported, it is recommended to upgrade to version 2 anyways
+#6.) this script only supports DSM versions 6.x.x through 7.2.x  --- as of 12/17/2023. Versions below 6.x.x. are not supported. 
 
 
 
 #############################################
 #VERIFICATIONS
 #############################################
-#1.) data is collected into influx properly.............................................................................................................  VERIFIED 4/28/2023
+#1.) data is collected into influx properly.............................................................................................................  VERIFIED 12/17/2023
 #2.) SNMP errors:
-	#a.) bad SNMP username causes script to shutdown with email.........................................................................................  VERIFIED 4/28/2023
-	#b.) bad SNMP authpass causes script to shutdown with email.........................................................................................  VERIFIED 4/28/2023
-	#c.) bad SNMP privacy pass causes script to shutdown with email.....................................................................................  VERIFIED 4/28/2023
-	#d.) bad SNMP ip address causes script to shutdown with email.......................................................................................  VERIFIED 4/28/2023
-	#e.) bad SNMP port causes script to shutdown with email.............................................................................................  VERIFIED 4/28/2023
-	#f.) verify email is sent when RAID is not normal...................................................................................................  VERIFIED 4/28/2023
-	#g.) verify email is sent when disk is not normal...................................................................................................  VERIFIED 4/28/2023
-	#h.) error emails a through g above only are sent within the allowed time interval..................................................................  VERIFIED 4/28/2023
-#3.) verify that when "sendmail" is unavailable (IE mail plus server is not working), emails are not sent, and the appropriate warnings are displayed...  VERIFIED 4/28/2023
-#4.) verify script behavior when config file is unavailable.............................................................................................  VERIFIED 4/28/2023
-#5.) verify script behavior when config file has wrong number of arguments..............................................................................  VERIFIED 4/28/2023
-#6.) verify script behavior when the target device is not available / responding to pings...............................................................  VERIFIED 4/28/2023
-#7.) verify disk temp emails are sent if disks are too hot..............................................................................................  VERIFIED 4/28/2023
-#8.) verify cpu temp emails are sent if CPU is too hot..................................................................................................  VERIFIED 4/28/2023
-#9.) verify GPU temp emails are sent if GPU is too hot..................................................................................................  VERIFIED 4/28/2023
-#10) error emails for #7 through #9 above only are sent within the allowed time interval................................................................  VERIFIED 4/28/2023
-#11.verify SS commanded to shutdown when utilization and temp are too low for 15 minutes................................................................  VERIFIED 4/28/2023
-#12.verify after GPU utilization and temperature are normal the email tracking file is deleted..........................................................  VERIFIED 4/28/2023
-#13.verify behavior when SS is successfully shutdown....................................................................................................  VERIFIED 4/28/2023
-#14.verify behavior when SS fails to shutdown...........................................................................................................  VERIFIED 4/28/2023
-#15.verify behavior when SS is successfully restarts....................................................................................................  VERIFIED 4/28/2023
-#16.verify behavior when SS fails to restart............................................................................................................  VERIFIED 4/28/2023
-#17.verify behavior when SS auto restart is NOT enabled.................................................................................................  VERIFIED 4/28/2023
-#18.verify behavior script is not ROOT..................................................................................................................  VERIFIED 4/28/2023
-#19.verify behavior when log directory is not available.................................................................................................  VERIFIED 4/28/2023
-#20.verify behavior when log directory is not readable..................................................................................................  VERIFIED 4/28/2023
-#21.verify behavior when log directory is not writable..................................................................................................  VERIFIED 4/28/2023
-#22.verify behavior when DSM version is below 7.0.......................................................................................................  VERIFIED 4/28/2023
-#23.verify behavior when DSM version is equal to 7.0....................................................................................................  VERIFIED 4/28/2023
-#24.verify behavior when DSM version is equal to 7.1....................................................................................................  VERIFIED 4/28/2023
-
-
-
+	#a.) bad SNMP username causes script to shutdown with email.........................................................................................  VERIFIED 12/17/2023
+	#b.) bad SNMP authpass causes script to shutdown with email.........................................................................................  VERIFIED 12/17/2023
+	#c.) bad SNMP privacy pass causes script to shutdown with email.....................................................................................  VERIFIED 12/17/2023
+	#d.) bad SNMP ip address causes script to shutdown with email.......................................................................................  VERIFIED 12/17/2023
+	#e.) bad SNMP port causes script to shutdown with email.............................................................................................  VERIFIED 12/17/2023
+	#f.) verify email is sent when RAID is not normal...................................................................................................  VERIFIED 12/17/2023
+	#g.) verify email is sent when disk is not normal...................................................................................................  VERIFIED 12/17/2023
+	#h.) error emails a through g above only are sent within the allowed time interval..................................................................  VERIFIED 12/17/2023
+#3.) verify that when "sendmail" is unavailable (IE mail plus server is not working), emails are not sent, and the appropriate warnings are displayed...  VERIFIED 12/17/2023
+#4.) verify script behavior when config file is unavailable.............................................................................................  VERIFIED 12/17/2023
+#5.) verify script behavior when config file has wrong number of arguments..............................................................................  VERIFIED 12/17/2023
+#6.) verify script behavior when the target device is not available / responding to pings...............................................................  VERIFIED 12/17/2023
+#7.) verify disk temp emails are sent if disks are too hot..............................................................................................  VERIFIED 12/17/2023
+#8.) verify cpu temp emails are sent if CPU is too hot..................................................................................................  VERIFIED 12/17/2023
+#9.) verify GPU temp emails are sent if GPU is too hot..................................................................................................  VERIFIED 12/17/2023
+#10) error emails for #7 through #9 above only are sent within the allowed time interval................................................................  VERIFIED 12/17/2023
+#11.verify SS commanded to shutdown when utilization and temp are too low for 15 minutes................................................................  VERIFIED 12/17/2023
+#12.verify after GPU utilization and temperature are normal the email tracking file is deleted..........................................................  VERIFIED 12/17/2023
+#13.verify behavior when SS is successfully shutdown....................................................................................................  VERIFIED 12/17/2023
+#14.verify behavior when SS fails to shutdown...........................................................................................................  VERIFIED 12/17/2023
+#15.verify behavior when SS is successfully restarts....................................................................................................  VERIFIED 12/17/2023
+#16.verify behavior when SS fails to restart............................................................................................................  VERIFIED 12/17/2023
+#17.verify behavior when SS auto restart is NOT enabled.................................................................................................  VERIFIED 12/17/2023
+#18.verify behavior script is not ROOT..................................................................................................................  VERIFIED 12/17/2023
+#19.verify behavior when log directory is not available.................................................................................................  VERIFIED 12/17/2023
+#20.verify behavior when log directory is not readable..................................................................................................  VERIFIED 12/17/2023
+#21.verify behavior when log directory is not writable..................................................................................................  VERIFIED 12/17/2023
+#22.verify behavior when DSM version is below 7.0.......................................................................................................  VERIFIED 12/17/2023
+#23.verify behavior when DSM version is equal to 7.0....................................................................................................  VERIFIED 12/17/2023
+#24.verify behavior when DSM version is equal to 7.1....................................................................................................  VERIFIED 12/17/2023
 
 
 #########################################
@@ -96,10 +93,9 @@ from_email_address="email@email.com"
 
 
 #log_file_location="/volume1/web/logging/notifications"
-#email_last_sent="$log_file_location/synology_snmp_last_email_sent_debug.txt"
-#lock_file_location="$log_file_location/synology_snmp_debug.lock"
-#config_file_location="/volume1/web/config/config_files/config_files_local/system_config22.txt"
-#SS_Station_restart_tracking="$log_file_location/SS_Station_restart_tracking_debug.txt"
+#lock_file_location="$log_file_location/synology_snmp.lock"
+#config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
+#SS_Station_restart_tracking="$log_file_location/SS_Station_restart_tracking.txt"
 #use_mail_plus_server=0 #Note, while mail plus server is not required to send emails if desired, the email process is 17x times slower if NOT using mail plus server. In addition mailplus server queues the messages so if they fail to send, it will try again later, and it keeps a log of all messages sent. because of this it is recommended to use Mail Plus server
 
 #NOTE THIS IS NOT THE NAME UNDER "CONTROL PANEL --> INFO CENTER"
@@ -121,29 +117,26 @@ sever_type=1 #1=server2, 2=serverNVR, 3=serverplex
 
 if [[ $sever_type == 1 ]]; then
 	log_file_location="/volume1/web/logging/notifications"
-	email_last_sent="$log_file_location/synology_snmp_last_email_sent_debug.txt"
-	lock_file_location="$log_file_location/synology_snmp_debug.lock"
+	lock_file_location="$log_file_location/${0##*/}.lock"
 	config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
-	SS_Station_restart_tracking="$log_file_location/SS_Station_restart_tracking_debug.txt"
-	capture_interval_adjustment=6
-	use_mail_plus_server=0
+	SS_Station_restart_tracking="$log_file_location/SS_Station_restart_tracking.txt"
+	capture_interval_adjustment=8
+	use_mail_plus_server=1
 	nas_name_error="Server2" #this is only needed if the script cannot access the server name over SNMP, or if the config file is unavailable and will be used in any error messages
 fi
 
 if [[ $sever_type == 2 ]]; then
 	log_file_location="/volume1/web/logging/notifications"
-	email_last_sent="$log_file_location/synology_snmp_last_email_sent.txt"
 	lock_file_location="$log_file_location/synology_snmp.lock"
 	config_file_location="/volume1/web/logging/system_config_NVR2.txt"
 	SS_Station_restart_tracking="$log_file_location/SS_Station_restart_tracking.txt"
-	capture_interval_adjustment=8
+	capture_interval_adjustment=13
 	use_mail_plus_server=1
 	nas_name_error="Server_NVR"  #this is only needed if the script cannot access the server name over SNMP, or if the config file is unavailable and will be used in any error messages
 fi
 
 if [[ $sever_type == 3 ]]; then
 	log_file_location="/volume1/web/logging/notifications"
-	email_last_sent="$log_file_location/synology_snmp_last_email_sent.txt"
 	lock_file_location="$log_file_location/synology_snmp.lock"
 	config_file_location="/volume1/web/config/config_files/config_files_local/system_config2.txt"
 	SS_Station_restart_tracking="$log_file_location/SS_Station_restart_tracking.txt"
@@ -172,6 +165,12 @@ if [[ $( whoami ) != "root" ]]; then
 	exit 1
 fi
 
+#check that this is a Synology unit as this script uses Synology specific IODs and SNMP details.
+if [ ! -r "/proc/sys/kernel/syno_hw_version" ]; then
+	echo "This is not running on a Synology System, exiting script"
+	exit 1
+fi
+
 #check that the required working directory is available, readable, and writable. it should be since we are root, but better check
 if [ -d "$log_file_location" ]; then
 	if [ -r "$log_file_location" ]; then
@@ -188,6 +187,13 @@ else
 	exit 1
 fi
 
+#create a lock file in the ramdisk directory to prevent more than one instance of this script from executing at once
+if ! mkdir "$lock_file_location"; then
+	echo -e "Failed to acquire lock.\n" >&2
+	exit 1
+fi
+trap 'rm -rf $lock_file_location' EXIT #remove the lockdir on exit
+
 #########################################################
 #this function pings google.com to confirm internet access is working prior to sending email notifications 
 #########################################################
@@ -200,270 +206,103 @@ ping -c1 "google.com" > /dev/null #ping google.com
 		true
 	fi
 }
-
-function send_email(){
+#########################################################
+#this function is used to send notifications
+#########################################################
+function send_mail(){
+#email_last_sent_log_file=${1}			this file contains the UNIX time stamp of when the email is sent so we can track how long ago an email was last sent
+#message_text=${2}						this string of text contains the body of the email message
+#email_subject=${3}						this string of text contains the email subject line
+#email_contents_file=${4}				this file is where the contents of the email are saved prior to sending and it contains the log of the email transmission, either will indicated email sent successfully or will include the error details
+#error_message=${5}						this string of text is only displayed when the script is executed from the CLI, it will be part of the error message if the email is not sent correctly
+#email_interval=${6}					this numerical value will control how many minutes must pass before the next email is allowed to be sent
+#use_mail_plus_server=${7}				this will control if mail plus server (IE sendmail) or ssmtp will be used to send emails. ssmtp is much slower to execute but does not require the installation of mail plus server
+	local message_tracker=""
+	local time_diff=0
+	echo "${2}"
+	echo ""
 	if check_internet; then
-		local file_to_send="${1}"
-		local use_send_mail="${2}"
-		result=""
-
-		if [ $use_send_mail -eq 1 ]; then #use Synology Mail Plus server "sendmail" command
-		
-			#verify MailPlus Server package is installed and running as the "sendmail" command is not installed in Synology by default. the MailPlus Server package is required
-			local install_check=$(/usr/syno/bin/synopkg list | grep MailPlus-Server)
-			if [ "$install_check" != "" ];then
-				#"MailPlus Server is installed, verify it is running and not stopped"
-				local status=$(/usr/syno/bin/synopkg is_onoff "MailPlus-Server")
-				if [ "$status" = "package MailPlus-Server is turned on" ]; then
-					local email_response=$(sendmail -t < "$file_to_send"  2>&1)
-					if [[ "$email_response" == "" ]]; then
-						echo "OK"
-					else
-						echo "$email_response"
-					fi	
-				else
-					echo "Mail Plus Server is Installed but not running"
-				fi
-			else 
-				echo "Mail Plus Server is not installed"
-			fi				
-		elif [ $use_send_mail -eq 0 ]; then #use "ssmtp" command
-		
-			#the "ssmtp" command can only take one email address destination at a time. so if there are more than one email addresses in the list, we need to send them one at a time
-			address_explode=(`echo $email_address | sed 's/;/\n/g'`) #explode on the semicolon separating the different possible addresses
-			xx=0
-			for xx in "${!address_explode[@]}"; do
-				local email_response=$(ssmtp ${address_explode[$xx]} < "$file_to_send"  2>&1)
-				if [[ "$email_response" == "" ]]; then
-					if [[ $result == "" ]]; then
-						result="OK" #only if the result has been blank, because if any of the possible addresses in the to_email string fail, we want to know
-					fi
-				else
-					result="$email_response"
-				fi
-			done
-			echo "$result"
+		local current_time=$( date +%s )
+		if [ -r "${1}" ]; then #file is available and readable 
+			read message_tracker < "${1}"
+			time_diff=$((( $current_time - $message_tracker ) / 60 ))
+		else
+			echo -n "$current_time" > "${1}"
+			time_diff=$(( ${6} + 1 ))
 		fi
-	else
-		echo "Internet is not available, skipping email send"
-	fi
-}
-
-#this function is used to send notification emails if any of the installed disk drive's temperatures are above the setting controlled in the web-interface
-function disk_temp_email(){
-	if [ $disk_temp -ge $max_disk_temp ]; then
-		#calculate how long ago the last email sent
-		current_time=$( date +%s )
-		time_diff=$((( $current_time - ${disk_temp_messge_tracker[$id]} ) / 60 ))
-		
-		if [ $time_diff -ge $email_interval ]; then
-			local now=$(date +"%T")
-			echo "the email has not been sent in over $email_interval minutes, re-sending email"
-			local mailbody="$now - Warning the temperature of $disk_name on $nas_name has exceeded $max_disk_temp Degrees C / $max_disk_temp_f Degrees F. The current Temperature is $disk_temp degrees C"
-			echo "To: $email_address " > $log_file_location/disk_email.txt
-			echo "From: $from_email_address " >> $log_file_location/disk_email.txt
-			echo "Subject: $disk_name Temperature Warning on $nas_name" >> $log_file_location/disk_email.txt
-			echo -e "\n$mailbody\n" >> $log_file_location/disk_email.txt
-			local email_response=$(send_email "$log_file_location/disk_email.txt" "$use_mail_plus_server")
-			if [[ $email_response == "OK" ]]; then
-				echo -e "\nEmail Sent Successfully" |& tee -a $log_file_location/disk_email.txt
-				disk_temp_messge_tracker[$id]=$current_time
-				time_diff=0
 				
-				#one of the disk's email notification time stamp has changed, we need to save it to file for later tracking 
-				for (( counter=0; counter<$number_drives_in_system; counter++ )); do
-					if [ $counter -eq 0 ];then
-						echo -n "${disk_temp_messge_tracker[$counter]}" > $email_last_sent
+		if [ $time_diff -ge ${6} ]; then
+			local now=$(date +"%T")
+			echo "the email has not been sent in over ${6} minutes, re-sending email"
+			if [[ ${7} == 1 ]]; then #if this is a value of 1, use mail plus
+				#verify MailPlus Server package is installed and running as the "sendmail" command is not installed in Synology by default. the MailPlus Server package is required
+				local install_check=$(/usr/syno/bin/synopkg list | grep MailPlus-Server)
+				if [ "$install_check" != "" ];then
+					#"MailPlus Server is installed, verify it is running and not stopped"
+					local status=$(/usr/syno/bin/synopkg is_onoff "MailPlus-Server")
+					if [ "$status" = "package MailPlus-Server is turned on" ]; then
+						echo "from: $from_email_address " > "${4}"
+						echo "to: $email_address " >> "${4}"
+						echo "subject: ${3}" >> "${4}"
+						echo "" >> "${4}"
+						echo "$now - ${2}" >> "${4}" #adding the mailbody text. 
+						local email_response=$(sendmail -t < "${4}"  2>&1)
+						if [[ "$email_response" == "" ]]; then
+							echo "" |& tee -a "${4}"
+							echo -e "Email to \"$email_address\" Sent Successfully\n" |& tee -a "${4}"
+							message_tracker=$current_time
+							time_diff=0
+							echo -n "$message_tracker" > "${1}"
+						else
+							echo -e "Warning, an error occurred while sending the ${5} notification email. the error was: $email_response\n" |& tee -a "${4}"
+						fi
 					else
-						echo -n ",${disk_temp_messge_tracker[$counter]}" >> $email_last_sent
+						echo -e "Warning Mail Plus Server is Installed but not running, unable to send email notification\n" |& tee -a "${4}"
+					fi
+				else
+					echo -e "Mail Plus Server is not installed, unable to send email notification\n" |& tee -a "${4}"
+				fi
+			else #since the value is not equal to 1, use ssmtp command
+				echo "From: $from_email_address " > "${4}"
+				echo "Subject: ${3}" >> "${4}"
+				echo "" >> "${4}"
+				echo -e "\n$now - ${2}\n" >> "${4}" #adding the mailbody text. 
+				
+				#the "ssmtp" command can only take one email address destination at a time. so if there are more than one email addresses in the list, we need to send them one at a time
+				address_explode=(`echo $email_address | sed 's/;/\n/g'`) #explode on the semicolon separating the different possible addresses
+				local xx=0
+				for xx in "${!address_explode[@]}"; do
+					local email_response=$(ssmtp ${address_explode[$xx]} < "${4}"  2>&1)
+					if [[ "$email_response" == "" ]]; then
+						echo "" |& tee -a "${4}"
+						echo -e "Email to \"${address_explode[$xx]}\" Sent Successfully\n" |& tee -a "${4}"
+						message_tracker=$current_time
+						time_diff=0
+						echo -n "$message_tracker" > "${1}"
+					else
+						echo -e "Warning, an error occurred while sending the ${5} notification email. the error was: $email_response\n" |& tee -a "${4}"
 					fi
 				done
-				
-				echo -n ",$CPU_message_tracker" >> $email_last_sent #write CPU logging variable
-				
-				if [ $GPU_installed -eq 1 ];then
-					echo -n ",$GPU_message_tracker" >> $email_last_sent #write GPU logging variable
-				fi	
-				
-				for (( counter=0; counter<$num_raid_devices; counter++ )); do
-					echo -n ",${raid_messge_tracker[$counter]}" >> $email_last_sent
-				done
-				for (( counter=0; counter<$number_drives_in_system; counter++ )); do
-					echo -n ",${disk_status_messge_tracker[$counter]}" >> $email_last_sent
-				done
-			else
-				echo -e "Warning, an error occurred while sending the Disk Temperature notification email. the error was: $email_response\n\n" |& tee $log_file_location/disk_email.txt
 			fi
 		else
-			echo -e "Only $time_diff minuets have passed since the last notification that $disk_name on $nas_name has exceeded $max_disk_temp Degrees C / $max_disk_temp_f Degrees F. The current Temperature is $disk_temp degrees C. Email will be sent every $email_interval minutes. $(( $email_interval - $time_diff )) Minutes Remaining Until Next Email \n\n"
-		fi
-	fi
-}
-
-function disk_status_email(){
-	#calculate how long ago the last email sent
-	current_time=$( date +%s )
-	time_diff=$((( $current_time - ${disk_status_messge_tracker[$id]} ) / 60 ))
-	
-	if [ $time_diff -ge $email_interval ]; then
-		local now=$(date +"%T")
-		echo "the email has not been sent in over $email_interval minutes, re-sending email"
-		local mailbody="$now - Warning the state of $disk_name on $nas_name is reporting as \"${1}\""
-		echo "To: $email_address " > $log_file_location/disk_email.txt
-		echo "From: $from_email_address " >> $log_file_location/disk_email.txt
-		echo "Subject: $disk_name State Warning on $nas_name" >> $log_file_location/disk_email.txt
-		echo -e "\n$mailbody\n" >> $log_file_location/disk_email.txt
-		local email_response=$(send_email "$log_file_location/disk_email.txt" "$use_mail_plus_server")
-		if [[ $email_response == "OK" ]]; then
-			echo "" |& tee -a $log_file_location/disk_email.txt
-			echo "Email Sent Successfully" |& tee -a $log_file_location/disk_email.txt
-			disk_status_messge_tracker[$id]=$current_time
-			time_diff=0
-			
-			#one of the disk's email notification time stamp has changed, we need to save it to file for later tracking 
-			for (( counter=0; counter<$number_drives_in_system; counter++ )); do
-				if [ $counter -eq 0 ];then
-					echo -n "${disk_temp_messge_tracker[$counter]}" > $email_last_sent
-				else
-					echo -n ",${disk_temp_messge_tracker[$counter]}" >> $email_last_sent
-				fi
-			done
-			
-			echo -n ",$CPU_message_tracker" >> $email_last_sent #write CPU logging variable
-				
-			if [ $GPU_installed -eq 1 ];then
-				echo -n ",$GPU_message_tracker" >> $email_last_sent #write GPU logging variable
-			fi	
-			for (( counter=0; counter<$num_raid_devices; counter++ )); do
-					echo -n ",${raid_messge_tracker[$counter]}" >> $email_last_sent
-			done
-			
-			for (( counter=0; counter<$number_drives_in_system; counter++ )); do
-				echo -n ",${disk_status_messge_tracker[$counter]}" >> $email_last_sent
-			done
-		else
-			echo -e "Warning, an error occurred while sending the Disk Status notification email. the error was: $email_response\n\n" |& tee $log_file_location/disk_email.txt
+			echo -e "Only $time_diff minuets have passed since the last notification, email will be sent every ${6} minutes. $(( ${6} - $time_diff )) Minutes Remaining Until Next Email\n"
 		fi
 	else
-		echo -e "Only $time_diff minuets have passed since the last notification that $disk_name on $nas_name is reporting a state of \"${1}\". Email will be sent every $email_interval minutes. $(( $email_interval - $time_diff )) Minutes Remaining Until Next Email\n\n"
+		echo -e "Internet is not available, skipping sending email\n" |& tee -a "${4}"
 	fi
 }
-
-#this function is used to send notification emails if any of the installed disk drive's temperatures are above the setting controlled in the web-interface
-function raid_email(){
-
-	#calculate how long ago the last email sent
-	current_time=$( date +%s )
-	time_diff=$((( $current_time - ${raid_messge_tracker[$id]} ) / 60 ))
-	
-	if [ $time_diff -ge $email_interval ]; then
-		local now=$(date +"%T")
-		echo "the email has not been sent in over $email_interval minutes, re-sending email"
-		local mailbody="$now - Warning the status of $raid_name on $nas_name is reporting as \"${1}\""
-		echo "To: $email_address " > $log_file_location/raid_email.txt
-		echo "From: $from_email_address " >> $log_file_location/raid_email.txt
-		echo "Subject: $raid_name Status Warning on $nas_name" >> $log_file_location/raid_email.txt
-		echo -e "\n$mailbody\n" >> $log_file_location/raid_email.txt
-		local email_response=$(send_email "$log_file_location/raid_email.txt" "$use_mail_plus_server")
-		if [[ $email_response == "OK" ]]; then
-			echo "" |& tee -a $log_file_location/raid_email.txt
-			echo "Email Sent Successfully" |& tee -a $log_file_location/raid_email.txt
-			raid_messge_tracker[$id]=$current_time
-			time_diff=0
-			
-			for (( counter=0; counter<$number_drives_in_system; counter++ )); do
-				if [ $counter -eq 0 ];then
-					echo -n "${disk_temp_messge_tracker[$counter]}" > $email_last_sent
-				else
-					echo -n ",${disk_temp_messge_tracker[$counter]}" >> $email_last_sent
-				fi
-			done
-		
-			echo -n ",$CPU_message_tracker" >> $email_last_sent #write CPU logging variable
-			
-			if [ $GPU_installed -eq 1 ];then
-				echo -n ",$GPU_message_tracker" >> $email_last_sent #write GPU logging variable
-			fi	
-			for (( counter=0; counter<$num_raid_devices; counter++ )); do
-				echo -n ",${raid_messge_tracker[$counter]}" >> $email_last_sent
-			done
-			for (( counter=0; counter<$number_drives_in_system; counter++ )); do
-				echo -n ",${disk_status_messge_tracker[$counter]}" >> $email_last_sent
-			done
-		else
-			echo -e "Warning, an error occurred while sending the RAID status notification email. the error was: $email_response\n\n" |& tee $log_file_location/raid_email.txt
-		fi
-	else
-		echo -e "Only $time_diff minuets have passed since the last notification that $raid_name on $nas_name is reporting as \"${1}\". Email will be sent every $email_interval minutes. $(( $email_interval - $time_diff )) Minutes Remaining Until Next Email\n\n"
-	fi
-}
-
-
-#this function is used to send notification if the SNMP data collection fails
-function snmp_fail_email(){
-	current_time=$( date +%s )
-	time_diff=$((( $current_time - $CPU_message_tracker ) / 60 ))
-	if [ $time_diff -ge $email_interval ]; then
-		local now=$(date +"%T")
-		echo "the email has not been sent in over $email_interval minutes, re-sending email"
-		local mailbody="$now - ALERT Script \"${0##*/}\" for \"$nas_name_error\" appears to have an issue with SNMP as it returned invalid data. The returned data was \"$nas_name\""
-		echo "To: $email_address " > $log_file_location/system_contents.txt
-		echo "From: $from_email_address " >> $log_file_location/system_contents.txt
-		echo "Subject: SNMP Setting Error for \"$nas_name_error\"" >> $log_file_location/system_contents.txt
-		echo -e "\n$mailbody\n" >> $log_file_location/system_contents.txt
-		local email_response=$(send_email "$log_file_location/system_contents.txt" "$use_mail_plus_server")
-		if [[ $email_response == "OK" ]]; then
-			echo "" |& tee -a $log_file_location/system_contents.txt
-			echo "Email Sent Successfully" |& tee -a $log_file_location/system_contents.txt
-			CPU_message_tracker=$current_time
-			time_diff=0
-			#one of the disk's email notification time stamp has changed, we need to save it to file for later tracking 
-			for (( counter=0; counter<$number_drives_in_system; counter++ )); do
-				if [ $counter -eq 0 ];then
-					echo -n "${disk_temp_messge_tracker[$counter]}" > $email_last_sent
-			else
-					echo -n ",${disk_temp_messge_tracker[$counter]}" >> $email_last_sent
-				fi
-			done
-			
-			echo -n ",$CPU_message_tracker" >> $email_last_sent #write CPU logging variable
-			
-			if [ $GPU_installed -eq 1 ];then
-				echo -n ",$GPU_message_tracker" >> $email_last_sent #write GPU logging variable
-			fi	
-			for (( counter=0; counter<$num_raid_devices; counter++ )); do
-				echo -n ",${raid_messge_tracker[$counter]}" >> $email_last_sent
-			done
-			for (( counter=0; counter<$number_drives_in_system; counter++ )); do
-				echo -n ",${disk_status_messge_tracker[$counter]}" >> $email_last_sent
-			done
-		else
-			echo "Warning, an error occurred while sending the SNMP Settings Failure notification email. the error was: $email_response" |& tee $log_file_location/system_contents.txt
-		fi
-	else
-		echo "Only $time_diff minuets have passed since the last notification, email will be sent every $email_interval minutes. $(( $email_interval - $time_diff )) Minutes Remaining Until Next Email"
-	fi
-	exit 1
-}
-
-#create a lock file in the ramdisk directory to prevent more than one instance of this script from executing at once
-if ! mkdir $lock_file_location; then
-	echo -e "Failed to acquire lock.\n" >&2
-	exit 1
-fi
-trap 'rm -rf $lock_file_location' EXIT #remove the lockdir on exit
-
 
 #reading in variables from configuration file. this configuration file is edited using a web administration page. or the file can be edited directly. 
 #If the file does not yet exist, opening the web administration page will create a file with default settings
 if [ -r "$config_file_location" ]; then
 	#file is available and readable 
-	read input_read < $config_file_location
+	read input_read < "$config_file_location"
 	explode=(`echo $input_read | sed 's/,/\n/g'`) #explode on the comma separating the variables
 	
 	#verify the correct number of configuration parameters are in the configuration file
-	if [[ ! ${#explode[@]} == 38 ]]; then
-		echo "WARNING - the configuration file is incorrect or corrupted. It should have 38 parameters, it currently has ${#explode[@]} parameters."
+	if [[ ! ${#explode[@]} == 44 ]]; then
+		echo ""
+		send_mail "$log_file_location/${0##*/}_Config_file_incorrect_last_message_sent.txt" "WARNING - the configuration file is incorrect or corrupted. It should have 44 parameters, it currently has ${#explode[@]} parameters." "Warning NAS \"$nas_name_error\" SNMP Monitoring Failed for script \"${0##*/}\" - Configuration file is incorrect" "$log_file_location/${0##*/}_email_contents.txt" "Config File Incorrect Alert" 60 $use_mail_plus_server
 		exit 1
 	fi
 	
@@ -505,12 +344,12 @@ if [ -r "$config_file_location" ]; then
 	enable_SS_restart=${explode[35]} #if the unit is a DVA unit with a GPU, the GPU runs hot and has high GPU usage. If the temperature and GPU usage are too low, then for some reason the system is no longer performing deep video analysis. This option allows the package to be restarted automatically to try fixing the issue
 	SS_restart_GPU_usage_threshold=${explode[36]}
 	SS_restart_GPU_temp_threshold=${explode[37]}
-	capture_synology_services=1
-	capture_FlashCache=1
-	capture_iSCSI_LUN=1
-	capture_SHA=1
-	capture_NFS=1
-	capture_iSCSI_Target=1
+	capture_synology_services=${explode[38]}
+	capture_FlashCache=${explode[39]}
+	capture_iSCSI_LUN=${explode[40]}
+	capture_SHA=${explode[41]}
+	capture_NFS=${explode[42]}
+	capture_iSCSI_Target=${explode[43]}
 	
 	if [ $debug -eq 1 ]; then
 		echo "max_disk_temp_f is $max_disk_temp_f"
@@ -556,29 +395,13 @@ if [ -r "$config_file_location" ]; then
 		echo "capture_iSCSI_LUN is $capture_iSCSI_LUN"
 		echo "capture_SHA is $capture_SHA"
 		echo "capture_NFS is $capture_NFS"
-		echo "capture_iSCSI_Target is capture_iSCSI_Target"
+		echo "capture_iSCSI_Target is $capture_iSCSI_Target"
 	fi
 
 
 	if [ $script_enable -eq 1 ]
 	then
 	
-		#get number of volumes devices
-		volume_device=$(mdadm --query --detail /dev/md* | grep /dev/md)
-		volume_device=(`echo $volume_device | sed 's/:/\n/g'`) #make an array of the results delineated by a :
-		num_raid_devices=$(( ${#volume_device[@]} - 2 )) #removing two devices because DSM exists on /dev/md0 and /dev/md1 and those are not part of data logging
-		
-		#get number of storage pools if required
-		storage_pools=$(mdadm --query --detail /dev/vg[0-9]  2>&1 | grep "/vg")
-		
-		if [[ $storage_pools != "mdadm: cannot open /dev/vg[0-9]: No such file or directory" ]]; then
-			IFS=$'\n' read -rd '' -a storage_pools <<<"$storage_pools"
-			
-			#total devices that will be reported
-			num_raid_devices=$(( $num_raid_devices + ${#storage_pools[@]} ))
-		fi
-		
-		
 		#confirm that the Synology NVidia drivers are actually installed. If they are not installed, set the correct flag
 		if ! command -v nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader &> /dev/null
 		then
@@ -597,145 +420,18 @@ if [ -r "$config_file_location" ]; then
 			fi
 		fi
 		
-		#reading in variables from previous script executions. we record when notification emails are sent (Linux epoc time stamp)
-		#This is used to control when repeat messages are sent. 
-		#we track this for each installed drive and the CPU/GPU, RAID device etc individually as each can require email notifications independently. 
-		
-		if [ -r "$email_last_sent" ]; then
-			#file is available and readable 
-			read input_read < $email_last_sent #determine how many minutes it has been since the last email has been sent
-			explode=(`echo $input_read | sed 's/,/\n/g'`)
-				
-			if [ $GPU_installed -eq 1 ];then
-				num_entries=$(( 2 + $number_drives_in_system + $number_drives_in_system + $num_raid_devices )) #the "2" is comprised of both the CPU and the GPU
-			else
-				num_entries=$(( 1 + $number_drives_in_system + $number_drives_in_system + $num_raid_devices )) #the "1" is comprised of only the CPU 
-			fi
-			
-			if [[ ! ${#explode[@]} == $num_entries ]]; then #then either the number of drives as configured in the web-interface is different, or the number of raid arrays has changed
-				rm "$email_last_sent"
-				echo "The number of drives as configured in the web-interface, or the number of raid arrays active on the system has changed since the script was last run and is exiting. "
-				echo "The file \"$email_last_sent\" is being removed and will be re-created when the script is run again"
-				exit 1
-			fi
-			
-			#read in the last time each system installed disk temperature warning emails were sent. 
-			for (( counter=0; counter<$number_drives_in_system; counter++ )); do
-				if [[ ${explode[$counter]} == "" ]]; then
-					echo "reading previous drive temperature email tracking data failed, exiting script, suggest deleting file \"$email_last_sent\" and running script again to re-create file"
-					exit 1
-				else
-					disk_temp_messge_tracker+=( ${explode[$counter]} );
-					if [ $debug -eq 1 ]; then
-						echo "disk_temp_messge_tracker id $counter is equal to: ${disk_temp_messge_tracker[$counter]}"
-					fi
-				fi
-			done
-
-			#read in the last time system CPU temperature warning emails were sent. 
-			if [[ ${explode[$counter]} == "" ]]; then
-				echo "reading previous CPU email tracking data failed, exiting script, suggest deleting file \"$email_last_sent\" and running script again to re-create file"
-				exit 1
-			else
-				CPU_message_tracker=${explode[$counter]}
-				if [ $debug -eq 1 ]; then
-					echo "CPU_message_tracker id $counter is equal to $CPU_message_tracker"
-				fi
-			fi
-			
-			#read in the last time system GPU (if installed) temperature warning emails were sent.
-			if [ $GPU_installed -eq 1 ];then
-				if [[ ${explode[$counter]} == "" ]]; then
-					echo "reading previous GPU email tracking data failed, exiting script, suggest deleting file \"$email_last_sent\" and running script again to re-create file"
-					exit 1
-				else
-					let counter=counter+1
-					GPU_message_tracker=${explode[$counter]}
-					if [ $debug -eq 1 ]; then
-						echo "GPU_message_tracker id $counter is equal to $GPU_message_tracker"
-					fi
-				fi
-			fi
-			
-			#read in the last time the raid devices installed on the system warning emails were sent.
-			for (( i=0; i<$num_raid_devices; i++ )); do
-				let counter=counter+1
-				if [[ ${explode[$counter]} == "" ]]; then
-					echo "reading previous RAID device email tracking data failed, exiting script, suggest deleting file \"$email_last_sent\" and running script again to re-create file"
-					exit 1
-				else
-					raid_messge_tracker+=( ${explode[$counter]} );
-					if [ $debug -eq 1 ]; then
-						echo "raid_messge_tracker id $counter is equal to ${raid_messge_tracker[$i]}"
-					fi
-				fi
-			done
-			for (( i=0; i<$number_drives_in_system; i++ )); do
-				let counter=counter+1
-				if [[ ${explode[$counter]} == "" ]]; then
-					echo "reading previous Disk Status email tracking data failed, exiting script, suggest deleting file \"$email_last_sent\" and running script again to re-create file"
-					exit 1
-				else
-					disk_status_messge_tracker+=( ${explode[$counter]} );
-					if [ $debug -eq 1 ]; then
-						echo "disk_status_messge_tracker id $counter is equal to \"${disk_status_messge_tracker[$i]}\""
-					fi
-				fi
-			done
-			
-			
-		else
-			#file is not available so let's make a new file with default values file
-			echo "$email_last_sent is not available, writing default values"
-			current_time=$( date +%s )
-			echo "current time is $current_time"
-			for (( counter=0; counter<$number_drives_in_system; counter++ )); do
-				if [ $counter -eq 0 ];then
-					echo -n "$current_time" > $email_last_sent
-				else
-					echo -n ",$current_time" >> $email_last_sent
-				fi
-				disk_temp_messge_tracker+=( $current_time );
-				echo "disk_temp_messge_tracker[$counter] is equal to ${disk_temp_messge_tracker[$counter]}"
-			done
-			
-			echo -n ",$current_time" >> $email_last_sent #write CPU logging variable
-			CPU_message_tracker=$current_time
-			echo "CPU_message_tracker is equal to $CPU_message_tracker"
-			
-			if [ $GPU_installed -eq 1 ];then
-				echo -n ",$current_time" >> $email_last_sent #write GPU logging variable
-				GPU_message_tracker=$current_time
-				echo "GPU_message_tracker is equal to $GPU_message_tracker"
-			fi
-			
-			for (( counter=0; counter<$num_raid_devices; counter++ )); do
-				echo -n ",$current_time" >> $email_last_sent #write GPU logging variable
-				raid_messge_tracker+=( $current_time );
-				echo "raid_messge_tracker[$counter] is equal to ${raid_messge_tracker[$counter]}"
-			done
-			
-			for (( counter=0; counter<$number_drives_in_system; counter++ )); do
-				echo -n ",$current_time" >> $email_last_sent #write GPU logging variable
-				disk_status_messge_tracker+=( $current_time );
-				echo "disk_status_messge_tracker[$counter] is equal to ${disk_status_messge_tracker[$counter]}"
-			done
-			
-			echo "$email_last_sent created with default values."
-			#exit
-		fi
 		#confirm that the Synology SNMP settings were configured otherwise exit script
 		if [ "$nas_snmp_user" = "" ];then
-			echo "Synology NAS Username is BLANK, please configure the SNMP settings"
-			snmp_fail_email
+			send_mail "$log_file_location/${0##*/}_SNMP-Error_last_message_sent.txt" "Synology NAS Username is BLANK, please configure the SNMP settings" "SNMP Setting Error for \"$nas_name_error\"" "$log_file_location/${0##*/}_email_contents.txt" "SNMP Error" $email_interval $use_mail_plus_server
+			exit 1
 		else
 			if [ "$snmp_authPass1" = "" ];then
-				echo "Synology NAS Authentication Password is BLANK, please configure the SNMP settings"
-				snmp_fail_email
+				send_mail "$log_file_location/${0##*/}_SNMP-Error_last_message_sent.txt" "Synology NAS Authentication Password is BLANK, please configure the SNMP settings" "SNMP Setting Error for \"$nas_name_error\"" "$log_file_location/${0##*/}_email_contents.txt" "SNMP Error" $email_interval $use_mail_plus_server
+				exit 1
 			else
 				if [ "$snmp_privPass2" = "" ];then
-					echo "Synology NAS Privacy Password is BLANK, please configure the SNMP settings"
-					snmp_fail_email
+					send_mail "$log_file_location/${0##*/}_SNMP-Error_last_message_sent.txt" "Synology NAS Privacy Password is BLANK, please configure the SNMP settings" "SNMP Setting Error for \"$nas_name_error\"" "$log_file_location/${0##*/}_email_contents.txt" "SNMP Error" $email_interval $use_mail_plus_server
+					exit 1
 				else
 					if [ $debug -eq 1 ];then
 						echo "Synology SNMP settings are not Blank"
@@ -773,37 +469,34 @@ if [ -r "$config_file_location" ]; then
 		#5
 			#we get nothing, the results are blank
 
-		
 		if [[ "$nas_name" == "Error:"* ]]; then #will search for the first error type
-			echo "warning, the SNMP Auth password and or the Privacy password supplied is below the minimum 8 characters required. Exiting Script"
-			snmp_fail_email
+			send_mail "$log_file_location/${0##*/}_SNMP-Error_last_message_sent.txt" "warning, the SNMP Auth password and or the Privacy password supplied is below the minimum 8 characters required. Exiting Script" "SNMP Setting Error for \"$nas_name_error\"" "$log_file_location/${0##*/}_email_contents.txt" "SNMP Error" $email_interval $use_mail_plus_server
+			exit 1
 		fi
 		
 		if [[ "$nas_name" == "Timeout:"* ]]; then #will search for the second error type
-			echo "The SNMP target did not respond. This could be the result of a bad SNMP privacy password, the wrong IP address, the wrong port, or SNMP services not being enabled on the target device"
-			echo "Exiting Script"
-			snmp_fail_email
+			send_mail "$log_file_location/${0##*/}_SNMP-Error_last_message_sent.txt" "The SNMP target did not respond. This could be the result of a bad SNMP privacy password, the wrong IP address, the wrong port, or SNMP services not being enabled on the target device" "SNMP Setting Error for \"$nas_name_error\"" "$log_file_location/${0##*/}_email_contents.txt" "SNMP Error" $email_interval $use_mail_plus_server
+			exit 1
 		fi
 		
 		if [[ "$nas_name" == "snmpwalk: Unknown user name"* ]]; then #will search for the third error type
-			echo "warning, The supplied username is incorrect. Exiting Script"
-			snmp_fail_email
+			send_mail "$log_file_location/${0##*/}_SNMP-Error_last_message_sent.txt" "warning, The supplied username is incorrect. Exiting Script" "SNMP Setting Error for \"$nas_name_error\"" "$log_file_location/${0##*/}_email_contents.txt" "SNMP Error" $email_interval $use_mail_plus_server
+			exit 1
 		fi
 		
 		if [[ "$nas_name" == "snmpwalk: Authentication failure (incorrect password, community or key)"* ]]; then #will search for the fourth error type
-			echo "The Authentication protocol or password is incorrect. Exiting Script"
-			snmp_fail_email
+			send_mail "$log_file_location/${0##*/}_SNMP-Error_last_message_sent.txt" "The Authentication protocol or password is incorrect. Exiting Script" "SNMP Setting Error for \"$nas_name_error\"" "$log_file_location/${0##*/}_email_contents.txt" "SNMP Error" $email_interval $use_mail_plus_server
+			exit 1
 		fi
 		
 		if [[ "$nas_name" == "" ]]; then #will search for the fifth error type
-			echo "Something is wrong with the SNMP settings, the results returned a blank/empty value. Exiting Script"
-			snmp_fail_email
+			send_mail "$log_file_location/${0##*/}_SNMP-Error_last_message_sent.txt" "Something is wrong with the SNMP settings, the results returned a blank/empty value. Exiting Script" "SNMP Setting Error for \"$nas_name_error\"" "$log_file_location/${0##*/}_email_contents.txt" "SNMP Error" $email_interval $use_mail_plus_server
+			exit 1
 		fi
 
 		if [[ "$nas_name" == "snmpwalk: Timeout" ]]; then #will search for the fifth error type
-			echo "The SNMP target did not respond. This could be the result of a bad SNMP privacy password, the wrong IP address, the wrong port, or SNMP services not being enabled on the target device"
-			echo "Exiting Script"
-			snmp_fail_email
+			send_mail "$log_file_location/${0##*/}_SNMP-Error_last_message_sent.txt" "The SNMP target did not respond. This could be the result of a bad SNMP privacy password, the wrong IP address, the wrong port, or SNMP services not being enabled on the target device" "SNMP Setting Error for \"$nas_name_error\"" "$log_file_location/${0##*/}_email_contents.txt" "SNMP Error" $email_interval $use_mail_plus_server
+			exit 1
 		fi
 
 		if [ ! $capture_interval -eq 10 ]; then
@@ -907,53 +600,9 @@ if [ -r "$config_file_location" ]; then
 				else
 					echo "No Expansion Unit is Attached or Active, Expansion unit logging will be skipped"
 				fi
-				
+
 				if [ $system_temp -ge $max_CPU0 ]; then
-				
-					current_time=$( date +%s )
-					time_diff=$((( $current_time - $CPU_message_tracker ) / 60 ))
-					
-					if [ $time_diff -ge $email_interval ]; then
-						now=$(date +"%T")
-						mailbody="$now - Warning the temperature of the system CPU on $nas_name has exceeded $max_CPU0 Degrees C / $max_CPU0_f Degrees F. The Temperature is currently $system_temp degrees"
-						echo "To: $email_address " > $log_file_location/system_contents.txt
-						echo "From: $from_email_address " >> $log_file_location/system_contents.txt
-						echo "Subject: WARNING - $nas_name CPU exceeded $max_CPU0 Degrees C / $max_CPU0_f Degrees F" >> $log_file_location/system_contents.txt
-						echo -e "\n$mailbody\n" >> $log_file_location/system_contents.txt
-						email_response=$(send_email "$log_file_location/system_contents.txt" "$use_mail_plus_server")
-						if [[ $email_response == "OK" ]]; then
-							echo "" |& tee -a $log_file_location/system_contents.txt
-							echo "Email Sent Successfully" |& tee -a $log_file_location/system_contents.txt
-							CPU_message_tracker=$current_time
-							time_diff=0
-							
-							#the CPU's email notification time stamp has changed, we need to save it to file for later tracking 
-							for (( counter=0; counter<$number_drives_in_system; counter++ )); do
-								if [ $counter -eq 0 ];then
-									echo -n "${disk_temp_messge_tracker[$counter]}" > $email_last_sent
-								else
-									echo -n ",${disk_temp_messge_tracker[$counter]}" >> $email_last_sent
-								fi
-							done
-							
-							echo -n ",$CPU_message_tracker" >> $email_last_sent #write CPU logging variable
-								
-							if [ $GPU_installed -eq 1 ];then
-								echo -n ",$GPU_message_tracker" >> $email_last_sent #write GPU logging variable
-							fi
-							for (( counter=0; counter<$num_raid_devices; counter++ )); do
-								echo -n ",${raid_messge_tracker[$counter]}" >> $email_last_sent
-							done
-							
-							for (( counter=0; counter<$number_drives_in_system; counter++ )); do
-								echo -n ",${disk_status_messge_tracker[$counter]}" >> $email_last_sent
-							done
-						else
-							echo -e "WARNING - Could not send Email Notification that the system temperature is too high. An error occurred while sending the notification email. the error was: $email_response\n\n" |& tee $log_file_location/system_contents.txt
-						fi
-					else
-						echo -e "Only $time_diff minuets have passed since the last notification for system CPU on $nas_name has exceeded $max_CPU0 Degrees C / $max_CPU0_f Degrees F. The Temperature is currently $system_temp degrees, email will be sent every $email_interval minutes. $(( $email_interval - $time_diff )) Minutes Remaining Until Next Email\n\n"
-					fi
+					send_mail "$log_file_location/${0##*/}_system_temp_last_message_sent.txt" "Warning the temperature of the system CPU on $nas_name has exceeded $max_CPU0 Degrees C / $max_CPU0_f Degrees F. The Temperature is currently $system_temp degrees" "WARNING - $nas_name CPU exceeded $max_CPU0 Degrees C / $max_CPU0_f Degrees F" "$log_file_location/${0##*/}_email_contents.txt" "System Temperature High" $email_interval $use_mail_plus_server
 				fi
 			else
 				echo "Skipping system capture"
@@ -1138,28 +787,29 @@ if [ -r "$config_file_location" ]; then
 							#19=RaidConvertSHRToPool
 							#20=RaidMigrateSHR1ToSHR2
 							#21=RaidUnknownStatus
+
 							if [ $raid_status -eq 2 ]; then
-								raid_email "Repairing"
+								send_mail "$log_file_location/${0##*/}_raid_status_last_message_sent_$raid_name.txt" "Warning the status of $raid_name on $nas_name is reporting as \"Repairing\"" "$raid_name Status Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Raid Status Alert" $email_interval $use_mail_plus_server
 							elif [ $raid_status -eq 3 ]; then
-								raid_email "Migrating"
+								send_mail "$log_file_location/${0##*/}_raid_status_last_message_sent_$raid_name.txt" "Warning the status of $raid_name on $nas_name is reporting as \"Migrating\"" "$raid_name Status Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Raid Status Alert" $email_interval $use_mail_plus_server
 							elif [ $raid_status -eq 4 ]; then
-								raid_email "Expanding"
+								send_mail "$log_file_location/${0##*/}_raid_status_last_message_sent_$raid_name.txt" "Warning the status of $raid_name on $nas_name is reporting as \"Expanding\"" "$raid_name Status Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Raid Status Alert" $email_interval $use_mail_plus_server
 							elif [ $raid_status -eq 5 ]; then
-								raid_email "Deleting"
+								send_mail "$log_file_location/${0##*/}_raid_status_last_message_sent_$raid_name.txt" "Warning the status of $raid_name on $nas_name is reporting as \"Deleting\"" "$raid_name Status Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Raid Status Alert" $email_interval $use_mail_plus_server
 							elif [ $raid_status -eq 11 ]; then
-								raid_email "Degraded"
+								send_mail "$log_file_location/${0##*/}_raid_status_last_message_sent_$raid_name.txt" "Warning the status of $raid_name on $nas_name is reporting as \"Degraded\"" "$raid_name Status Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Raid Status Alert" $email_interval $use_mail_plus_server
 							elif [ $raid_status -eq 12 ]; then
-								raid_email "Crashed"
+								send_mail "$log_file_location/${0##*/}_raid_status_last_message_sent_$raid_name.txt" "Warning the status of $raid_name on $nas_name is reporting as \"Crashed\"" "$raid_name Status Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Raid Status Alert" $email_interval $use_mail_plus_server
 							elif [ $raid_status -eq 15 ]; then
-								raid_email "Un-Deploying"
+								send_mail "$log_file_location/${0##*/}_raid_status_last_message_sent_$raid_name.txt" "Warning the status of $raid_name on $nas_name is reporting as \"Un-Deploying\"" "$raid_name Status Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Raid Status Alert" $email_interval $use_mail_plus_server
 							elif [ $raid_status -eq 18 ]; then
-								raid_email "Expanding Unfinished SHR"
+								send_mail "$log_file_location/${0##*/}_raid_status_last_message_sent_$raid_name.txt" "Warning the status of $raid_name on $nas_name is reporting as \"Expanding Unfinished SHR\"" "$raid_name Status Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Raid Status Alert" $email_interval $use_mail_plus_server
 							elif [ $raid_status -eq 19 ]; then
-								raid_email "Convert SHR To Pool"
+								send_mail "$log_file_location/${0##*/}_raid_status_last_message_sent_$raid_name.txt" "Warning the status of $raid_name on $nas_name is reporting as \"Convert SHR To Pool\"" "$raid_name Status Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Raid Status Alert" $email_interval $use_mail_plus_server
 							elif [ $raid_status -eq 20 ]; then
-								raid_email "Migrate SHR1 To SHR2"
+								send_mail "$log_file_location/${0##*/}_raid_status_last_message_sent_$raid_name.txt" "Warning the status of $raid_name on $nas_name is reporting as \"Migrate SHR1 To SHR2\"" "$raid_name Status Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Raid Status Alert" $email_interval $use_mail_plus_server
 							elif [ $raid_status -eq 21 ]; then
-								raid_email "Unknown Status"
+								send_mail "$log_file_location/${0##*/}_raid_status_last_message_sent_$raid_name.txt" "Warning the status of $raid_name on $nas_name is reporting as \"Unknown Status\"" "$raid_name Status Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Raid Status Alert" $email_interval $use_mail_plus_server
 							fi
 							
 						elif [[ "$line" == "SYNOLOGY-RAID-MIB::raidFreeSize.$id ="* ]]; then
@@ -1171,7 +821,7 @@ if [ -r "$config_file_location" ]; then
 						
 						/usr/bin/dpkg --compare-versions "7.0" gt "$DSMVersion"
 						if [ "$?" -eq "0" ]; then
-							dsm_type="Synology (DSM 6)" #version is DSM6, do nothing extra
+							echo "DSM is below version 7.0 skipping capturing raidHotspareCnt"
 						else
 							if [[ "$line" == "SYNOLOGY-RAID-MIB::raidHotspareCnt.$id ="* ]]; then
 								raidHotspareCnt=${line/"SYNOLOGY-RAID-MIB::raidHotspareCnt."$id" = INTEGER: "/}
@@ -1233,13 +883,13 @@ if [ -r "$config_file_location" ]; then
 						#4=Partitions on the disk are damaged
 						#5=The disk is damaged/crashed
 						if [ $disk_status -eq 2 ]; then
-							disk_status_email "The disk has system partitions but no data"
+							send_mail "$log_file_location/${0##*/}_Disk_Status_last_message_sent_$disk_name.txt" "Warning the state of $disk_name on $nas_name is reporting as \"The disk has system partitions but no data\"" "$disk_name State Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Disk Status Alert" $email_interval $use_mail_plus_server
 						elif [ $disk_status -eq 3 ]; then
-							disk_status_email "The disk is not partitioned"
+							send_mail "$log_file_location/${0##*/}_Disk_Status_last_message_sent_$disk_name.txt" "Warning the state of $disk_name on $nas_name is reporting as \"The disk is not partitioned\"" "$disk_name State Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Disk Status Alert" $email_interval $use_mail_plus_server
 						elif [ $disk_status -eq 4 ]; then
-							disk_status_email "Partitions on the disk are damaged"
+							send_mail "$log_file_location/${0##*/}_Disk_Status_last_message_sent_$disk_name.txt" "Warning the state of $disk_name on $nas_name is reporting as \"Partitions on the disk are damaged\"" "$disk_name State Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Disk Status Alert" $email_interval $use_mail_plus_server
 						elif [ $disk_status -eq 5 ]; then
-							disk_status_email "The disk is damaged/crashed"
+							send_mail "$log_file_location/${0##*/}_Disk_Status_last_message_sent_$disk_name.txt" "Warning the state of $disk_name on $nas_name is reporting as \"The disk is damaged/crashed\"" "$disk_name State Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Disk Status Alert" $email_interval $use_mail_plus_server
 						fi
 					
 					elif [[ "$line" == "SYNOLOGY-DISK-MIB::diskTemperature.$id ="* ]]; then
@@ -1249,7 +899,7 @@ if [ -r "$config_file_location" ]; then
 					#depending on version of DSM, we may or may not collect additional data
 					/usr/bin/dpkg --compare-versions "7.0" gt "$DSMVersion"
 					if [ "$?" -eq "0" ]; then
-						dsm_type="Synology (DSM 6)" #version is DSM6, do nothing extra
+						echo "DSM is below version 7.0 skipping capturing disk_role, disk_retry, disk_BadSector, disk_IdentifyFail, disk_RemainLife, diskHealthStatus"
 					else
 						if [[ "$line" == "SYNOLOGY-DISK-MIB::diskRole.$id ="* ]]; then
 							disk_role=${line/"SYNOLOGY-DISK-MIB::diskRole."$id" = STRING: "/}
@@ -1276,7 +926,7 @@ if [ -r "$config_file_location" ]; then
 						#depending on version of DSM, we may or may not collect additional data
 						/usr/bin/dpkg --compare-versions "7.1" gt "$DSMVersion"
 						if [ "$?" -eq "0" ]; then
-							dsm_type="Synology (DSM 7.0)" #version is DSM7.0, do nothing extra
+							echo "DSM is below version 7.1 skipping capturing \"diskHealthStatus\"" 
 						else
 							#this OID is supported only on 7.1 and higher
 							if [[ "$line" == "SYNOLOGY-DISK-MIB::diskHealthStatus.$id ="* ]]; then
@@ -1286,11 +936,11 @@ if [ -r "$config_file_location" ]; then
 								#Critical(3) The disk health status is critical.
 								#Failing(4) The disk health status is failing.
 								if [ $diskHealthStatus -eq 2 ]; then
-									disk_status_email "The disk health status is warning"
+									send_mail "$log_file_location/${0##*/}_Disk_Status_last_message_sent_$disk_name.txt" "Warning the state of $disk_name on $nas_name is reporting as \"The disk health status is warning\"" "$disk_name State Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Disk Status Alert" $email_interval $use_mail_plus_server
 								elif [ $diskHealthStatus -eq 3 ]; then
-									disk_status_email "The disk health status is critical"
+									send_mail "$log_file_location/${0##*/}_Disk_Status_last_message_sent_$disk_name.txt" "Warning the state of $disk_name on $nas_name is reporting as \"The disk health status is critical\"" "$disk_name State Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Disk Status Alert" $email_interval $use_mail_plus_server
 								elif [ $diskHealthStatus -eq 4 ]; then
-									disk_status_email "The disk health status is failing"
+									send_mail "$log_file_location/${0##*/}_Disk_Status_last_message_sent_$disk_name.txt" "Warning the state of $disk_name on $nas_name is reporting as \"The disk health status is failing\"" "$disk_name State Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Disk Status Alert" $email_interval $use_mail_plus_server
 								fi
 							fi
 						fi
@@ -1315,9 +965,11 @@ if [ -r "$config_file_location" ]; then
 						post_url=$post_url"$measurement,nas_name=$nas_name,disk_name=$disk_name diskHealthStatus=$diskHealthStatus
 		"
 					fi
+		
 					#check that none of the disks are too hot. if a disk is too hot, send an email warning that the disk is over heating
-					
-					disk_temp_email
+					if [ $disk_temp -ge $max_disk_temp ]; then
+						send_mail "$log_file_location/${0##*/}_Disk_Temp_last_message_sent_$disk_name.txt" "Warning the temperature of $disk_name on $nas_name has exceeded $max_disk_temp Degrees C / $max_disk_temp_f Degrees F. The current Temperature is $disk_temp degrees C" "$disk_name Temperature Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Disk Temp Alert" $email_interval $use_mail_plus_server
+					fi
 				done
 				
 				#########################################
@@ -1495,10 +1147,10 @@ if [ -r "$config_file_location" ]; then
 							#track how long the GPU has been running at low usage and if it stays this way for too long ($SS_restart_delay_minuets minutes), only then restart SS
 							current_time=$( date +%s )
 							if [ -r "$SS_Station_restart_tracking" ]; then
-								read email_time < $SS_Station_restart_tracking
+								read email_time < "$SS_Station_restart_tracking"
 								time_diff=$((( $current_time - $email_time ) / 60 ))
 							else 
-								echo "$current_time" > $SS_Station_restart_tracking
+								echo "$current_time" > "$SS_Station_restart_tracking"
 								time_diff=0
 							fi
 							
@@ -1518,22 +1170,9 @@ if [ -r "$config_file_location" ]; then
 										#confirm that the package was actually stopped 
 										status=$(/usr/syno/bin/synopkg is_onoff "SurveillanceStation")
 										if [ "$status" = "package SurveillanceStation is turned on" ]; then
-											echo -e "\n\nSynology Surveillance Station FAILED to shutdown shutdown\n\n"
-											echo "$current_time" > $SS_Station_restart_tracking
+											echo "$current_time" > "$SS_Station_restart_tracking"
 											time_diff=0
-											now=$(date +"%T")
-											mailbody="$now - ALERT! - Synology Surveillance Station Appeared to no longer be utilizing the GPU. Automatic restart of Synology Surveillance Station was enabled and was unable to shutdown Surveillance Station. "
-											echo "To: $email_address " > $log_file_location/GPU0_contents.txt
-											echo "From: $from_email_address " >> $log_file_location/GPU0_contents.txt
-											echo "Subject: $nas_name Synology Surveillance Station Low GPU Usage - Synology Surveillance Station Shutdown FAILED" >> $log_file_location/GPU0_contents.txt
-											echo -e "\n$mailbody\n" >> $log_file_location/GPU0_contents.txt
-											email_response=$(send_email "$log_file_location/GPU0_contents.txt" "$use_mail_plus_server")
-											if [[ $email_response == "OK" ]]; then
-												echo "" |& tee -a $log_file_location/GPU0_contents.txt
-												echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
-											else
-												echo "WARNING - could not send email notification. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
-											fi
+											send_mail "$log_file_location/${0##*/}_Surveillance_last_message_sent.txt" "ALERT! - Synology Surveillance Station Appeared to no longer be utilizing the GPU. Automatic restart of Synology Surveillance Station was enabled and was unable to shutdown Surveillance Station." "Subject: $nas_name Synology Surveillance Station Low GPU Usage - Synology Surveillance Station Shutdown FAILED" "$log_file_location/${0##*/}_email_contents.txt" "Surveillance Station Error" 0 $use_mail_plus_server
 										else
 											echo -e "\n\nSynology Surveillance Station successfully shutdown\n\n"
 											echo "Restarting Synology Surveillance Station...."
@@ -1545,59 +1184,22 @@ if [ -r "$config_file_location" ]; then
 											sleep 1
 											status=$(/usr/syno/bin/synopkg is_onoff "SurveillanceStation")
 											if [ "$status" = "package SurveillanceStation is turned on" ]; then
-												echo -e "\n\nSynology Surveillance Station successfully restarted\n\n"
-												echo "$current_time" > $SS_Station_restart_tracking
+												echo "$current_time" > "$SS_Station_restart_tracking"
 												time_diff=0
-												now=$(date +"%T")
-												mailbody="$now - ALERT! - Synology Surveillance Station Appeared to no longer be utilizing the GPU. Automatic restart of Synology Surveillance Station was enabled and was successfully restarted. "
-												echo "To: $email_address " > $log_file_location/GPU0_contents.txt
-												echo "From: $from_email_address " >> $log_file_location/GPU0_contents.txt
-												echo "Subject: $nas_name Synology Surveillance Station Low GPU Usage - Synology Surveillance Station Restarted" >> $log_file_location/GPU0_contents.txt
-												echo -e "\n$mailbody\n" >> $log_file_location/GPU0_contents.txt
-												email_response=$(send_email "$log_file_location/GPU0_contents.txt" "$use_mail_plus_server")
-												if [[ $email_response == "OK" ]]; then
-													echo "" |& tee -a $log_file_location/GPU0_contents.txt
-													echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
-												else
-													echo "WARNING - could not send email notification. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
-												fi
+												send_mail "$log_file_location/${0##*/}_Surveillance_last_message_sent.txt" "ALERT! - Synology Surveillance Station Appeared to no longer be utilizing the GPU. Automatic restart of Synology Surveillance Station was enabled and was successfully restarted." "$nas_name Synology Surveillance Station Low GPU Usage - Synology Surveillance Station Restarted" "$log_file_location/${0##*/}_email_contents.txt" "Surveillance Station Error" 0 $use_mail_plus_server
 											else
 												echo -e "\n\nSynology Surveillance Station was shutdown but FAILED to restart\n\n"
 												echo "$current_time" > $SS_Station_restart_tracking
 												time_diff=0
-												now=$(date +"%T")
-												mailbody="$now - ALERT! - Synology Surveillance Station Appeared to no longer be utilizing the GPU. Automatic restart of Synology Surveillance Station was enabled and was NOT successfully restarted. "
-												echo "To: $email_address " > $log_file_location/GPU0_contents.txt
-												echo "From: $from_email_address " >> $log_file_location/GPU0_contents.txt
-												echo "Subject: $nas_name Synology Surveillance Station Low GPU Usage - Synology Surveillance Station Restart FAILED" >> $log_file_location/GPU0_contents.txt
-												echo -e "\n$mailbody\n" >> $log_file_location/GPU0_contents.txt
-												email_response=$(send_email "$log_file_location/GPU0_contents.txt" "$use_mail_plus_server")
-												if [[ $email_response == "OK" ]]; then
-													echo "" |& tee -a $log_file_location/GPU0_contents.txt
-													echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
-												else
-													echo "WARNING - could not send email notification. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
-												fi
+												send_mail "$log_file_location/${0##*/}_Surveillance_last_message_sent.txt" "ALERT! - Synology Surveillance Station Appeared to no longer be utilizing the GPU. Automatic restart of Synology Surveillance Station was enabled and was NOT successfully restarted." "$nas_name Synology Surveillance Station Low GPU Usage - Synology Surveillance Station Restart FAILED" "$log_file_location/${0##*/}_email_contents.txt" "Surveillance Station Error" 0 $use_mail_plus_server
 											fi
 										fi
 									else
 										if [ $time_diff -ge $email_interval ]; then
 											#automatic restart is not enabled, so at least send a notification email 
-											echo "$current_time" > $SS_Station_restart_tracking
+											echo "$current_time" > "$SS_Station_restart_tracking"
 											time_diff=0
-											now=$(date +"%T")
-											mailbody="$now - ALERT! - Synology Surveillance Station Appears to no longer be utilizing the GPU. Note, automatic restart of Synology Surveillance Station is not enabled. Manually check the status of Synology Surveillance Station."
-											echo "To: $email_address " > $log_file_location/GPU0_contents.txt
-											echo "From: $from_email_address " >> $log_file_location/GPU0_contents.txt
-											echo "Subject: $nas_name Synology Surveillance Station Low GPU Usage " >> $log_file_location/GPU0_contents.txt
-											echo -e "\n$mailbody\n" >> $log_file_location/GPU0_contents.txt
-											email_response=$(send_email "$log_file_location/GPU0_contents.txt" "$use_mail_plus_server")
-											if [[ $email_response == "OK" ]]; then
-												echo "" |& tee -a $log_file_location/GPU0_contents.txt
-												echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
-											else
-												echo "WARNING - could not send email notification about GPU loading. An error occurred while sending the notification email. the error was: $email_response" |& tee $log_file_location/GPU0_contents.txt
-											fi
+											send_mail "$log_file_location/${0##*/}_Surveillance_last_message_sent.txt" "ALERT! - Synology Surveillance Station Appears to no longer be utilizing the GPU. Note, automatic restart of Synology Surveillance Station is not enabled. Manually check the status of Synology Surveillance Station." "$nas_name Synology Surveillance Station Low GPU Usage" "$log_file_location/${0##*/}_email_contents.txt" "Surveillance Station Error" 0 $use_mail_plus_server
 										else
 											echo -e "\nNote, automatic restart of Synology Surveillance Station is not enabled. Manually check the status of Synology Surveillance Station.\n\nAnother Email will be sent in $(( $email_interval - $time_diff )) Minuets"
 										fi
@@ -1611,7 +1213,7 @@ if [ -r "$config_file_location" ]; then
 						fi
 					else
 						if [ -r "$SS_Station_restart_tracking" ]; then
-							rm $SS_Station_restart_tracking
+							rm "$SS_Station_restart_tracking"
 						fi
 					fi
 					
@@ -1624,53 +1226,7 @@ if [ -r "$config_file_location" ]; then
 					post_url=${post_url//\ %/$secondString}
 
 					if [ $gpuTemperature -ge $max_GPU ]; then
-					#echo the disk temp has been exceeded
-					
-						current_time=$( date +%s )
-						time_diff=$((( $current_time - $GPU_message_tracker ) / 60 ))
-						
-						if [ $time_diff -ge $email_interval ]; then
-							#echo the email has not been sent in over 1 hour, re-sending email
-							now=$(date +"%T")
-							mailbody="$now - Warning the temperature of the NVR GPU on $nas_name has exceeded $max_GPU Degrees C / $max_GPU_f Degrees F. The Temperature is currently $gpuTemperature degrees"
-							echo "To: $email_address " > $log_file_location/GPU0_contents.txt
-							echo "From: $from_email_address " >> $log_file_location/GPU0_contents.txt
-							echo "Subject: $nas_name GPU Temperature Warning " >> $log_file_location/GPU0_contents.txt
-							echo -e "\n$mailbody\n" >> $log_file_location/GPU0_contents.txt
-							email_response=$(send_email "$log_file_location/GPU0_contents.txt" "$use_mail_plus_server")
-							if [[ $email_response == "OK" ]]; then
-								echo "" |& tee -a $log_file_location/GPU0_contents.txt
-								echo "Email Sent Successfully" |& tee -a $log_file_location/GPU0_contents.txt
-								GPU_message_tracker=$current_time
-								time_diff=0
-
-								#the GPU's email notification time stamp has changed, we need to save it to file for later tracking 
-								for (( counter=0; counter<$number_drives_in_system; counter++ )); do
-									if [ $counter -eq 0 ];then
-										echo -n "${disk_temp_messge_tracker[$counter]}" > $email_last_sent
-									else
-										echo -n ",${disk_temp_messge_tracker[$counter]}" >> $email_last_sent
-									fi
-								done
-											
-								echo -n ",$CPU_message_tracker" >> $email_last_sent #write CPU logging variable
-											
-								if [ $GPU_installed -eq 1 ];then
-									echo -n ",$GPU_message_tracker" >> $email_last_sent #write GPU logging variable
-								fi
-								for (( counter=0; counter<$num_raid_devices; counter++ )); do
-									echo -n ",${raid_messge_tracker[$counter]}" >> $email_last_sent
-								done
-								
-								for (( counter=0; counter<$number_drives_in_system; counter++ )); do
-									echo -n ",${disk_status_messge_tracker[$counter]}" >> $email_last_sent
-								done
-							else
-								echo -e "WARNING - could not send email notification that the GPU is overheating. An error occurred while sending the notification email. the error was: $email_response\n\n" |& tee $log_file_location/GPU0_contents.txt
-							fi
-						else
-							echo -e "Only $time_diff minuets have passed since the last notification that the GPU is overheating, email will be sent every $email_interval minutes. $(( $email_interval - $time_diff )) Minutes Remaining Until Next Email\n\n"
-						fi
+						send_mail "$log_file_location/${0##*/}_GPU_temperature_last_message_sent.txt" "Warning the temperature of the NVR GPU on $nas_name has exceeded $max_GPU Degrees C / $max_GPU_f Degrees F. The Temperature is currently $gpuTemperature degrees" "$nas_name GPU Temperature Warning" "$log_file_location/${0##*/}_email_contents.txt" "GPU Temperature Alert" $email_interval $use_mail_plus_server
 					fi
 				else
 					echo "Skipping GPU capture"
@@ -1861,7 +1417,7 @@ if [ -r "$config_file_location" ]; then
 							
 							/usr/bin/dpkg --compare-versions "7.0" gt "$DSMVersion"
 							if [ "$?" -eq "0" ]; then
-								dsm_type="Synology (DSM 6)" #version is DSM6, do nothing extra
+								echo "DSM is below version 7.0 skipping capturing DiskLatencyAvg, ThinProvisionVolFreeMBs"
 							else
 								if [[ "$line" == "SYNOLOGY-SYSTEM-MIB::synology.104.1.1.18.$id ="* ]]; then
 									DiskLatencyAvg=${line/"SYNOLOGY-SYSTEM-MIB::synology.104.1.1.18."$id" = INTEGER: "/}
@@ -1925,6 +1481,19 @@ if [ -r "$config_file_location" ]; then
 							#critical (2) The High-Availability cluster is in danger, and should be resolved as soon as possible. Please refer to High-Availability Manager for more details.
 							#upgrading (3) The High-Availability cluster is upgrading.
 							#processing (4) The High-Availability cluster is undergoing some operation. 
+							if [[ $clusterStatus != 0 ]]; then
+								clusterStatus_text=""
+								if [[ $clusterStatus == 1 ]]; then
+									clusterStatus_text="The High-Availability cluster has something went wrong. Action should be taken to resume High-Availability feature. Please refer to High-Availability Manager for more details."
+								elif [[ $clusterStatus == 2 ]]; then
+									clusterStatus_text="The High-Availability cluster is in danger, and should be resolved as soon as possible. Please refer to High-Availability Manager for more details."
+								elif [[ $clusterStatus == 3 ]]; then
+									clusterStatus_text="The High-Availability cluster is upgrading."
+								elif [[ $clusterStatus == 4 ]]; then
+									clusterStatus_text="The High-Availability cluster is undergoing some operation."
+								fi
+								send_mail "$log_file_location/${0##*/}_SHA_last_message_sent.txt" "$clusterStatus_text" "ALERT - $nas_name High Availability Notification" "$log_file_location/${0##*/}_email_contents.txt" "SHA Alert" $email_interval $use_mail_plus_server
+							fi
 						elif [[ $line == SYNOLOGY-SHA-MIB::heartbeatStatus.0* ]]; then
 							heartbeatStatus=${line/"SYNOLOGY-SHA-MIB::heartbeatStatus.0 = INTEGER: "/}
 							#normal (0) The heartbeat connection is normal. 
@@ -1955,7 +1524,7 @@ if [ -r "$config_file_location" ]; then
 			#########################################
 			/usr/bin/dpkg --compare-versions "7.0" gt "$DSMVersion"
 			if [ "$?" -eq "0" ]; then
-				dsm_type="Synology (DSM 6)" #do nothing
+				echo "DSM is below version 7.0 skipping capturing NFS as that is not available below DSM v7"
 			else
 				#NFS capture is only available on DSM 7.0 and higher
 				if [ $capture_NFS -eq 1 ]
@@ -2019,7 +1588,7 @@ if [ -r "$config_file_location" ]; then
 			#########################################
 			/usr/bin/dpkg --compare-versions "7.0" gt "$DSMVersion"
 			if [ "$?" -eq "0" ]; then
-				dsm_type="Synology (DSM 6)" #do nothing
+				echo "DSM is below version 7.0 skipping capturing iSCSI_Target as that is not available below DSM v7"
 			else
 				#iSCSI Target capture is only available on DSM 7.0 and higher
 				if [ $capture_iSCSI_Target -eq 1 ]; then
@@ -2053,7 +1622,6 @@ if [ -r "$config_file_location" ]; then
 							
 							elif [[ "$line" == "SYNOLOGY-SYSTEM-MIB::synology.110.4.$id ="* ]]; then
 								TargetConnectionStatus=${line/"SYNOLOGY-SYSTEM-MIB::synology.110.4."$id" = "/}
-								#TargetConnectionStatus=${TargetConnectionStatus//\"/$secondString} #getting rid of the quotes
 							fi
 							
 							done < <(snmpwalk -v3 -l authPriv -u "$nas_snmp_user" -a $snmp_auth_protocol -A "$snmp_authPass1" -x $snmp_privacy_protocol -X "$snmp_privPass2" $nas_url:161 .1.3.6.1.4.1.6574.110)
@@ -2095,37 +1663,7 @@ else
 	if [[ "$email_address" == "" || "$from_email_address" == "" ]];then
 		echo -e "\n\nNo email address information is configured, Cannot send an email indicating script \"${0##*/}\" config file is missing and script will not run"
 	else
-		#determine when the last time a general notification email was sent out. this will make sure we send an email only every x minutes
-		current_time=$( date +%s )
-		if [ -r "$SS_Station_restart_tracking" ]; then
-			read email_time < $SS_Station_restart_tracking
-			email_time_diff=$((( $current_time - $email_time ) / 60 ))
-		else 
-			echo "$current_time" > $SS_Station_restart_tracking
-			email_time_diff=61
-		fi
-		
-		now=$(date +"%T")
-		echo "Configuration file for script \"${0##*/}\" is missing, skipping script and will send alert email every 60 minuets"
-		if [ $email_time_diff -ge 60 ]; then
-			#send an email indicating script config file is missing and script will not run
-			mailbody="$now - Warning NAS \"$nas_name_error\" SNMP Monitoring Failed for script \"${0##*/}\" - Configuration file is missing "
-			echo "To: $email_address " > $log_file_location/disk_email.txt
-			echo "From: $from_email_address " >> $log_file_location/disk_email.txt
-			echo "Subject: Warning NAS \"$nas_name_error\" SNMP Monitoring Failed for script \"${0##*/}\" - Configuration file is missing " >> $log_file_location/disk_email.txt
-			echo -e "\n$mailbody\n" >> $log_file_location/disk_email.txt
-			email_response=$(send_email "$log_file_location/disk_email.txt" "$use_mail_plus_server")
-			if [[ $email_response == "OK" ]]; then
-				echo -e "\nEmail Sent Successfully indicating script \"${0##*/}\" config file is missing and script will not run" |& tee -a $email_contents
-				echo "$current_time" > $SS_Station_restart_tracking
-				email_time_diff=0
-			else
-				echo -e "\n\nWARNING -- An error occurred while sending email. The error was: $email_response\n\n" |& tee $email_contents
-			fi	
-		else
-			echo -e "\n\nAnother email notification will be sent in $(( 60 - $email_time_diff)) Minutes"
-		fi
-		exit 1
+		send_mail "$SS_Station_restart_tracking" "Warning NAS \"$nas_name_error\" SNMP Monitoring Failed for script \"${0##*/}\" - Configuration file is missing" "Warning NAS \"$nas_name_error\" SNMP Monitoring Failed for script \"${0##*/}\" - Configuration file is missing" "$log_file_location/${0##*/}_email_contents.txt" "Config File Missing Alert" 60 $use_mail_plus_server
 	fi
 	exit 1
 fi
