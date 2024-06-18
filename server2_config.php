@@ -92,7 +92,7 @@ if ($server_type==1) {
 			 
 			[$max_disk_temp_f, $max_disk_temp_error] = test_input_processing($_POST['max_disk_temp_f'], $pieces[0], "numeric", 65, 200);
 			
-			[$max_nvme_temp_f, $max_nvme_temp_error] = test_input_processing($_POST['max_nvme_temp_f'], $pieces[0], "numeric", 65, 200);
+			[$max_nvme_temp_f, $max_nvme_temp_error] = test_input_processing($_POST['max_nvme_temp_f'], $pieces[44], "numeric", 65, 200);
 			
 			[$max_CPU0_f, $max_CPU0_error] = test_input_processing($_POST['max_CPU0_f'], $pieces[1], "numeric", 65, 200);
 			
@@ -228,7 +228,7 @@ if ($server_type==1) {
 			  $capture_SHA=$pieces[41];
 			  $capture_NFS=$pieces[42];
 			  $capture_iSCSI_Target=$pieces[43];
-			  $max_nvme_temp_f=$pieces[0];
+			  $max_nvme_temp_f=$pieces[44];
 		   }else{
 			  $max_disk_temp_f=32;
 			  $max_nvme_temp_f=32;
