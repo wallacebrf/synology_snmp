@@ -1,5 +1,5 @@
 #!/bin/bash
-#version 4.0 dated 12/17/2023
+#version 4.01 dated 6/18/2024
 #By Brian Wallace
 
 #initially based on the script found here by user kernelkaribou
@@ -300,9 +300,9 @@ if [ -r "$config_file_location" ]; then
 	explode=(`echo $input_read | sed 's/,/\n/g'`) #explode on the comma separating the variables
 	
 	#verify the correct number of configuration parameters are in the configuration file
-	if [[ ! ${#explode[@]} == 44 ]]; then
+	if [[ ! ${#explode[@]} == 46 ]]; then
 		echo ""
-		send_mail "$log_file_location/${0##*/}_Config_file_incorrect_last_message_sent.txt" "WARNING - the configuration file is incorrect or corrupted. It should have 44 parameters, it currently has ${#explode[@]} parameters." "Warning NAS \"$nas_name_error\" SNMP Monitoring Failed for script \"${0##*/}\" - Configuration file is incorrect" "$log_file_location/${0##*/}_email_contents.txt" "Config File Incorrect Alert" 60 $use_mail_plus_server
+		send_mail "$log_file_location/${0##*/}_Config_file_incorrect_last_message_sent.txt" "WARNING - the configuration file is incorrect or corrupted. It should have 46 parameters, it currently has ${#explode[@]} parameters." "Warning NAS \"$nas_name_error\" SNMP Monitoring Failed for script \"${0##*/}\" - Configuration file is incorrect" "$log_file_location/${0##*/}_email_contents.txt" "Config File Incorrect Alert" 60 $use_mail_plus_server
 		exit 1
 	fi
 	
@@ -350,6 +350,8 @@ if [ -r "$config_file_location" ]; then
 	capture_SHA=${explode[41]}
 	capture_NFS=${explode[42]}
 	capture_iSCSI_Target=${explode[43]}
+	max_nvme_temp_f=${explode[44]}
+	max_nvme_temp=${explode[45]}
 	
 	if [ $debug -eq 1 ]; then
 		echo "max_disk_temp_f is $max_disk_temp_f"
@@ -967,8 +969,14 @@ if [ -r "$config_file_location" ]; then
 					fi
 		
 					#check that none of the disks are too hot. if a disk is too hot, send an email warning that the disk is over heating
-					if [ $disk_temp -ge $max_disk_temp ]; then
-						send_mail "$log_file_location/${0##*/}_Disk_Temp_last_message_sent_$disk_name.txt" "Warning the temperature of $disk_name on $nas_name has exceeded $max_disk_temp Degrees C / $max_disk_temp_f Degrees F. The current Temperature is $disk_temp degrees C" "$disk_name Temperature Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Disk Temp Alert" $email_interval $use_mail_plus_server
+					if [[ $disk_name != *"Cache"* ]] || [[ $disk_name != *"cache"* ]]; then
+						if [ $disk_temp -gt $max_disk_temp ]; then
+							send_mail "$log_file_location/${0##*/}_Disk_Temp_last_message_sent_$disk_name.txt" "Warning the temperature of $disk_name on $nas_name has exceeded $max_disk_temp Degrees C / $max_disk_temp_f Degrees F. The current Temperature is $disk_temp degrees C" "$disk_name Temperature Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Disk Temp Alert" $email_interval $use_mail_plus_server
+						fi
+					else
+						if [ $disk_temp -gt $max_nvme_temp ]; then
+							send_mail "$log_file_location/${0##*/}_Disk_Temp_last_message_sent_$disk_name.txt" "Warning the temperature of $disk_name on $nas_name has exceeded $max_nvme_temp Degrees C / $max_nvme_temp_f Degrees F. The current Temperature is $disk_temp degrees C" "$disk_name Temperature Warning on $nas_name" "$log_file_location/${0##*/}_email_contents.txt" "Disk Temp Alert" $email_interval $use_mail_plus_server
+						fi
 					fi
 				done
 				
