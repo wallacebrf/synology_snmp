@@ -41,6 +41,7 @@ if ($server_type==1) {
 //script start
 
 		$max_disk_temp_error="";
+		$max_nvme_temp_error="";
 		$max_CPU0_error="";
 		$email_error="";
 		$email_interval_error="";
@@ -90,6 +91,8 @@ if ($server_type==1) {
 			[$snmp_authPass1, $snmp_authPass1_error] = test_input_processing($_POST['snmp_authPass1'], $pieces[22], "password", 0, 0); 
 			 
 			[$max_disk_temp_f, $max_disk_temp_error] = test_input_processing($_POST['max_disk_temp_f'], $pieces[0], "numeric", 65, 200);
+			
+			[$max_nvme_temp_f, $max_nvme_temp_error] = test_input_processing($_POST['max_nvme_temp_f'], $pieces[0], "numeric", 65, 200);
 			
 			[$max_CPU0_f, $max_CPU0_error] = test_input_processing($_POST['max_CPU0_f'], $pieces[1], "numeric", 65, 200);
 			
@@ -173,7 +176,7 @@ if ($server_type==1) {
 		  
 		  
 		  
-		  $put_contents_string="".$max_disk_temp_f.",".$max_CPU0_f.",".$email.",".$email_interval.",".$capture_system.",".$capture_memory.",".$capture_cpu.",".$capture_volume.",".$capture_raid.",".$capture_disk.",".$capture_ups.",".$capture_network.",".$capture_interval.",".$nas_url.",".$influxdb_host.",".$influxdb_port.",".$influxdb_name.",".$influxdb_user.",".$influxdb_pass.",".$script_enable.",".round((($max_disk_temp_f-32)*(5/9)),0).",".round((($max_CPU0_f-32)*(5/9)),0).",".$snmp_authPass1.",".$snmp_privPass2.",".$number_drives_in_system.",".$GPU_installed.",".$nas_snmp_user.",".$snmp_auth_protocol.",".$snmp_privacy_protocol.",".$capture_GPU.",".$max_GPU_f.",".round((($max_GPU_f-32)*(5/9)),0).",".$from_email.",".$influx_http_type.",".$influxdb_org.",".$enable_SS_restart.",".$SS_restart_GPU_usage_threshold.",".$SS_restart_GPU_temp_threshold.",".$capture_synology_services.",".$capture_FlashCache.",".$capture_iSCSI_LUN.",".$capture_SHA.",".$capture_NFS.",".$capture_iSCSI_Target."";
+		  $put_contents_string="".$max_disk_temp_f.",".$max_CPU0_f.",".$email.",".$email_interval.",".$capture_system.",".$capture_memory.",".$capture_cpu.",".$capture_volume.",".$capture_raid.",".$capture_disk.",".$capture_ups.",".$capture_network.",".$capture_interval.",".$nas_url.",".$influxdb_host.",".$influxdb_port.",".$influxdb_name.",".$influxdb_user.",".$influxdb_pass.",".$script_enable.",".round((($max_disk_temp_f-32)*(5/9)),0).",".round((($max_CPU0_f-32)*(5/9)),0).",".$snmp_authPass1.",".$snmp_privPass2.",".$number_drives_in_system.",".$GPU_installed.",".$nas_snmp_user.",".$snmp_auth_protocol.",".$snmp_privacy_protocol.",".$capture_GPU.",".$max_GPU_f.",".round((($max_GPU_f-32)*(5/9)),0).",".$from_email.",".$influx_http_type.",".$influxdb_org.",".$enable_SS_restart.",".$SS_restart_GPU_usage_threshold.",".$SS_restart_GPU_temp_threshold.",".$capture_synology_services.",".$capture_FlashCache.",".$capture_iSCSI_LUN.",".$capture_SHA.",".$capture_NFS.",".$capture_iSCSI_Target.",".$max_nvme_temp_f."";
 		  
 		  file_put_contents("$config_file",$put_contents_string );
 		  
@@ -225,8 +228,10 @@ if ($server_type==1) {
 			  $capture_SHA=$pieces[41];
 			  $capture_NFS=$pieces[42];
 			  $capture_iSCSI_Target=$pieces[43];
+			  $max_nvme_temp_f=$pieces[0];
 		   }else{
 			  $max_disk_temp_f=32;
+			  $max_nvme_temp_f=32;
 			  $max_CPU0_f=32;
 			  $email="admin@admin.com";
 			  $email_interval=60;
@@ -271,7 +276,7 @@ if ($server_type==1) {
 			  $capture_NFS=0;
 			  $capture_iSCSI_Target=0;
 			  
-			  $put_contents_string="".$max_disk_temp_f.",".$max_CPU0_f.",".$email.",".$email_interval.",".$capture_system.",".$capture_memory.",".$capture_cpu.",".$capture_volume.",".$capture_raid.",".$capture_disk.",".$capture_ups.",".$capture_network.",".$capture_interval.",".$nas_url.",".$influxdb_host.",".$influxdb_port.",".$influxdb_name.",".$influxdb_user.",".$influxdb_pass.",".$script_enable.",".round((($max_disk_temp_f-32)*(5/9)),0).",".round((($max_CPU0_f-32)*(5/9)),0).",".$snmp_authPass1.",".$snmp_privPass2.",".$number_drives_in_system.",".$GPU_installed.",".$nas_snmp_user.",".$snmp_auth_protocol.",".$snmp_privacy_protocol.",".$capture_GPU.",".$max_GPU_f.",".round((($max_GPU_f-32)*(5/9)),0).",".$from_email.",".$influx_http_type.",".$influxdb_org.",".$enable_SS_restart.",".$SS_restart_GPU_usage_threshold.",".$SS_restart_GPU_temp_threshold.",".$capture_synology_services.",".$capture_FlashCache.",".$capture_iSCSI_LUN.",".$capture_SHA.",".$capture_NFS.",".$capture_iSCSI_Target."";
+			  $put_contents_string="".$max_disk_temp_f.",".$max_CPU0_f.",".$email.",".$email_interval.",".$capture_system.",".$capture_memory.",".$capture_cpu.",".$capture_volume.",".$capture_raid.",".$capture_disk.",".$capture_ups.",".$capture_network.",".$capture_interval.",".$nas_url.",".$influxdb_host.",".$influxdb_port.",".$influxdb_name.",".$influxdb_user.",".$influxdb_pass.",".$script_enable.",".round((($max_disk_temp_f-32)*(5/9)),0).",".round((($max_CPU0_f-32)*(5/9)),0).",".$snmp_authPass1.",".$snmp_privPass2.",".$number_drives_in_system.",".$GPU_installed.",".$nas_snmp_user.",".$snmp_auth_protocol.",".$snmp_privacy_protocol.",".$capture_GPU.",".$max_GPU_f.",".round((($max_GPU_f-32)*(5/9)),0).",".$from_email.",".$influx_http_type.",".$influxdb_org.",".$enable_SS_restart.",".$SS_restart_GPU_usage_threshold.",".$SS_restart_GPU_temp_threshold.",".$capture_synology_services.",".$capture_FlashCache.",".$capture_iSCSI_LUN.",".$capture_SHA.",".$capture_NFS.",".$capture_iSCSI_Target.",".$max_nvme_temp_f."";
 		  
 			  file_put_contents("$config_file",$put_contents_string );
 		   }
@@ -405,6 +410,10 @@ if ($server_type==1) {
 									print "checked";
 							   }
 		   print "				>Enable SNMP Flash Cache Variable Capture? <font size=\"1\">disk_reads, disk_writes, ReadHits, WriteHits, TotalRead, TotalWrite, ReadHitRate, WriteHitRate, ReadSeqSkip, WriteSeqSkip</font></p>
+		   
+		   <p>-> Max NVME Cache Drive Temperature [F]: <input type=\"text\" name=\"max_nvme_temp_f\" value=".$max_nvme_temp_f."> [C]: ".round((($max_nvme_temp_f-32)*(5/9)),0)." ".$max_nvme_temp_error."</p>
+		   
+		   
 		   <p>-> <input type=\"checkbox\" name=\"capture_iSCSI_LUN\" value=\"1\" ";
 							   if ($capture_iSCSI_LUN==1){
 									print "checked";
