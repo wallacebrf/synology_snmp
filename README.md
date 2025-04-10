@@ -101,6 +101,22 @@ NOTE: this script can gather two parameters that are NOT AVILABLE through SNMP, 
 
 Some items like system, GPU, CPU, and disk temperatures can send alert email notifications based on configurable set-points. 
 
+Note: 4/10/2025, need to update the script to collect the following addtional detail:
+
+https://kb.synology.com/en-uk/DG/Synology_DiskStation_MIB_Guide/3 
+
+SYNOLOGY-SYSTEM-MIB::cpuUtilization.0
+
+SYNOLOGY-SYSTEM-MIB::memUtilization.0
+
+SYNOLOGY-SYSTEM-MIB::thermalStatus.0
+
+Synology Port MIB (OID: .1.3.6.1.4.1.6574.109)
+
+Synology MailPlus MIB (OID: .1.3.6.1.4.1.6574.201)
+
+Synology SMB Service MIB (OID: .1.3.6.1.4.1.6574.111)
+
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
